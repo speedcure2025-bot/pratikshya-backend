@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: pratikshya_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://pratikshya:pratikshya%40123@db:5432/pratikshya_fashon
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: ankane/pgvector:v0.5.1
+    container_name: pratikshya_db
+    environment:
+      POSTGRES_USER: pratikshya
+      POSTGRES_PASSWORD: pratikshya@123
+      POSTGRES_DB: pratikshya_fashon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: pratikshya_redis
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build: .
+    container_name: pratikshya_celery
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://pratikshya:pratikshya%40123@db:5432/pratikshya_fashon
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:

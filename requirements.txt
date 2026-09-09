@@ -1,0 +1,84 @@
+# ============================================================
+# PRATIKSHYA FASHION BACKEND
+# FastAPI + PostgreSQL + SQLAlchemy + Alembic
+# ============================================================
+
+# --- Web Framework ---
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+
+# --- Database ---
+sqlalchemy==2.0.30
+alembic==1.13.1
+Mako==1.3.5
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# --- Validation & Configuration ---
+pydantic==2.7.1
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+
+# --- Authentication & Security ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.3
+
+# --- OAuth ---
+google-auth==2.29.0
+
+# --- File Upload & Image Processing ---
+aiofiles==23.2.1
+Pillow==10.3.0
+python-magic==0.4.27
+
+# --- AWS / S3 Storage ---
+boto3==1.34.96
+
+# --- Background Tasks ---
+celery==5.4.0
+
+# --- HTTP Client ---
+httpx==0.27.0
+aiohttp==3.9.5
+
+# --- Email ---
+fastapi-mail==1.4.1
+
+# --- SMS / WhatsApp ---
+twilio==9.0.5
+
+# --- Payment Gateway ---
+razorpay==1.4.2
+
+# --- Redis / Caching ---
+fastapi-cache2==0.2.1
+
+# --- Rate Limiting ---
+slowapi==0.1.9
+
+# --- Logging ---
+structlog==24.2.0
+python-json-logger==2.0.7
+
+# --- Monitoring ---
+prometheus-fastapi-instrumentator==6.1.0
+
+# --- Utilities ---
+python-slugify==8.0.4
+orjson==3.10.3
+pendulum==3.0.0
+
+# --- Testing only (not used by the application at runtime) ---
+# tests/unit/test_phase6_media_db.py and test_phase7_media_lifecycle.py run the
+# real ORM models against a local SQLite file so the API/ORM behaviour suites
+# pass with no server installed. The production database remains PostgreSQL.
+#
+# The PostgreSQL-backed checks — tests/unit/test_media_schema_integrity.py,
+# scripts/verify_media_schema.py and scripts/media_lifecycle_pg_e2e.py — need a
+# real server plus psycopg2 (already listed above). They read DATABASE_URL,
+# require it to point at a loopback host and at the disposable
+# `pratikshya_local` database, create their own throwaway database beside it,
+# and drop it again. With no local server they SKIP rather than fail.
+aiosqlite==0.22.1

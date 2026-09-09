@@ -1,0 +1,6895 @@
+{
+  "meta": {
+    "generator": "backend/schema_audit/scan_query_columns.py",
+    "method": "AST static analysis of SQLAlchemy select/update/delete/insert and where/filter/order_by/group_by/having/join/select_from calls",
+    "note": "Heuristic only; raw SQL strings and runtime-built expressions are not parsed.",
+    "files_scanned": 286,
+    "records": 375
+  },
+  "queries": [
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 265,
+      "call": "select",
+      "function": "get_all_settings",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 288,
+      "call": "where",
+      "function": "get_settings_section",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "admin_setting": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 288,
+      "call": "select",
+      "function": "get_settings_section",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 313,
+      "call": "where",
+      "function": "update_settings_section",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "admin_setting": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 313,
+      "call": "select",
+      "function": "update_settings_section",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 343,
+      "call": "where",
+      "function": "reset_settings_section",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "admin_setting": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 343,
+      "call": "select",
+      "function": "reset_settings_section",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 363,
+      "call": "select",
+      "function": "reset_all_settings",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/admin.py",
+      "line": 396,
+      "call": "order_by",
+      "function": "get_activity_log",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 54,
+      "call": "where",
+      "function": "analytics_overview",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 54,
+      "call": "select",
+      "function": "analytics_overview",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "total"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "total"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 60,
+      "call": "select_from",
+      "function": "analytics_overview",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 63,
+      "call": "select_from",
+      "function": "analytics_overview",
+      "entities": [
+        "customer_profiles"
+      ],
+      "selected_entities": [
+        "CustomerProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 67,
+      "call": "select_from",
+      "function": "analytics_overview",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 67,
+      "call": "select",
+      "function": "analytics_overview",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "low_stock_threshold",
+        "stock"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "low_stock_threshold",
+          "stock"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 75,
+      "call": "where",
+      "function": "analytics_overview",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 75,
+      "call": "select_from",
+      "function": "analytics_overview",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 83,
+      "call": "where",
+      "function": "analytics_overview",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 83,
+      "call": "select_from",
+      "function": "analytics_overview",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 110,
+      "call": "where",
+      "function": "analytics_sales",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "created_at",
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "created_at",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 110,
+      "call": "select",
+      "function": "analytics_sales",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "created_at",
+        "id",
+        "total"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "created_at",
+          "id",
+          "total"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 137,
+      "call": "group_by",
+      "function": "analytics_top_products",
+      "entities": [
+        "orders_order_item"
+      ],
+      "selected_entities": [
+        "OrderItemModel"
+      ],
+      "columns": [
+        "product_id",
+        "product_image",
+        "product_name"
+      ],
+      "columns_by_table": {
+        "orders_order_item": [
+          "product_id",
+          "product_image",
+          "product_name"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 137,
+      "call": "where",
+      "function": "analytics_top_products",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 137,
+      "call": "join",
+      "function": "analytics_top_products",
+      "entities": [
+        "orders_order",
+        "orders_order_item"
+      ],
+      "selected_entities": [
+        "OrderItemModel",
+        "OrderModel"
+      ],
+      "columns": [
+        "id",
+        "order_id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "id"
+        ],
+        "orders_order_item": [
+          "order_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 137,
+      "call": "select",
+      "function": "analytics_top_products",
+      "entities": [
+        "orders_order_item"
+      ],
+      "selected_entities": [
+        "OrderItemModel"
+      ],
+      "columns": [
+        "line_total",
+        "product_id",
+        "product_image",
+        "product_name",
+        "quantity"
+      ],
+      "columns_by_table": {
+        "orders_order_item": [
+          "line_total",
+          "product_id",
+          "product_image",
+          "product_name",
+          "quantity"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 173,
+      "call": "group_by",
+      "function": "analytics_top_customers",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "customer_id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 173,
+      "call": "where",
+      "function": "analytics_top_customers",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "customer_id",
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "customer_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 173,
+      "call": "select",
+      "function": "analytics_top_customers",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "customer_id",
+        "id",
+        "total"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "customer_id",
+          "id",
+          "total"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 189,
+      "call": "where",
+      "function": "analytics_top_customers",
+      "entities": [
+        "customer_profiles"
+      ],
+      "selected_entities": [
+        "CustomerProfileModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "customer_profiles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 189,
+      "call": "select",
+      "function": "analytics_top_customers",
+      "entities": [
+        "customer_profiles"
+      ],
+      "selected_entities": [
+        "CustomerProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 196,
+      "call": "where",
+      "function": "analytics_top_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 196,
+      "call": "select",
+      "function": "analytics_top_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 216,
+      "call": "order_by",
+      "function": "analytics_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 216,
+      "call": "group_by",
+      "function": "analytics_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 216,
+      "call": "select",
+      "function": "analytics_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "id",
+        "status"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "id",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 231,
+      "call": "select_from",
+      "function": "analytics_inventory_summary",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line": 231,
+      "call": "select",
+      "function": "analytics_inventory_summary",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id",
+        "low_stock_threshold",
+        "stock"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id",
+          "low_stock_threshold",
+          "stock"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 59,
+      "call": "select",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 61,
+      "call": "where",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "action"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "action"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 63,
+      "call": "where",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "target_product_id"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "target_product_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 65,
+      "call": "where",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "target_employee_id"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "target_employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 67,
+      "call": "where",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "target_order_id"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "target_order_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 70,
+      "call": "where",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "actor_employee_id",
+        "actor_name"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "actor_employee_id",
+          "actor_name"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 75,
+      "call": "where",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "action",
+        "summary"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "action",
+          "summary"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/audit.py",
+      "line": 78,
+      "call": "order_by",
+      "function": "list_logs",
+      "entities": [
+        "audit_activity_log"
+      ],
+      "selected_entities": [
+        "ActivityLogModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "audit_activity_log": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/auth.py",
+      "line": 325,
+      "call": "where",
+      "function": "sign_up_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 152,
+      "call": "where",
+      "function": "list_offers",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "is_active"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "is_active"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 152,
+      "call": "select",
+      "function": "list_offers",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 182,
+      "call": "where",
+      "function": "validate_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "code"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 182,
+      "call": "select",
+      "function": "validate_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 228,
+      "call": "order_by",
+      "function": "admin_list_offers",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 228,
+      "call": "select",
+      "function": "admin_list_offers",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 247,
+      "call": "where",
+      "function": "admin_create_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "code"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 247,
+      "call": "select",
+      "function": "admin_create_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 288,
+      "call": "where",
+      "function": "admin_update_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 288,
+      "call": "select",
+      "function": "admin_update_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 310,
+      "call": "where",
+      "function": "admin_activate_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 310,
+      "call": "select",
+      "function": "admin_activate_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 329,
+      "call": "where",
+      "function": "admin_pause_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 329,
+      "call": "select",
+      "function": "admin_pause_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 348,
+      "call": "where",
+      "function": "admin_archive_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/coupons.py",
+      "line": 348,
+      "call": "select",
+      "function": "admin_archive_offer",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/permissions.py",
+      "line": 42,
+      "call": "order_by",
+      "function": "list_permissions",
+      "entities": [
+        "permissions"
+      ],
+      "selected_entities": [
+        "PermissionModel"
+      ],
+      "columns": [
+        "category",
+        "code"
+      ],
+      "columns_by_table": {
+        "permissions": [
+          "category",
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/permissions.py",
+      "line": 42,
+      "call": "select",
+      "function": "list_permissions",
+      "entities": [
+        "permissions"
+      ],
+      "selected_entities": [
+        "PermissionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/permissions.py",
+      "line": 58,
+      "call": "where",
+      "function": "get_permission",
+      "entities": [
+        "permissions"
+      ],
+      "selected_entities": [
+        "PermissionModel"
+      ],
+      "columns": [
+        "code"
+      ],
+      "columns_by_table": {
+        "permissions": [
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/permissions.py",
+      "line": 58,
+      "call": "select",
+      "function": "get_permission",
+      "entities": [
+        "permissions"
+      ],
+      "selected_entities": [
+        "PermissionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 45,
+      "call": "order_by",
+      "function": "list_roles",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 45,
+      "call": "select",
+      "function": "list_roles",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 56,
+      "call": "where",
+      "function": "get_role",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 56,
+      "call": "select",
+      "function": "get_role",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 62,
+      "call": "order_by",
+      "function": "get_role",
+      "entities": [
+        "permissions"
+      ],
+      "selected_entities": [
+        "PermissionModel"
+      ],
+      "columns": [
+        "code"
+      ],
+      "columns_by_table": {
+        "permissions": [
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 62,
+      "call": "where",
+      "function": "get_role",
+      "entities": [
+        "role_permissions"
+      ],
+      "selected_entities": [
+        "RolePermissionModel"
+      ],
+      "columns": [
+        "role_id"
+      ],
+      "columns_by_table": {
+        "role_permissions": [
+          "role_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 62,
+      "call": "join",
+      "function": "get_role",
+      "entities": [
+        "role_permissions",
+        "permissions"
+      ],
+      "selected_entities": [
+        "PermissionModel",
+        "RolePermissionModel"
+      ],
+      "columns": [
+        "id",
+        "permission_id"
+      ],
+      "columns_by_table": {
+        "permissions": [
+          "id"
+        ],
+        "role_permissions": [
+          "permission_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/roles.py",
+      "line": 62,
+      "call": "select",
+      "function": "get_role",
+      "entities": [
+        "permissions"
+      ],
+      "selected_entities": [
+        "PermissionModel"
+      ],
+      "columns": [
+        "code"
+      ],
+      "columns_by_table": {
+        "permissions": [
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 64,
+      "call": "select",
+      "function": "list_users",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 67,
+      "call": "where",
+      "function": "list_users",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email",
+        "full_name",
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email",
+          "full_name",
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 69,
+      "call": "where",
+      "function": "list_users",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 71,
+      "call": "where",
+      "function": "list_users",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "users": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 74,
+      "call": "order_by",
+      "function": "list_users",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "users": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 84,
+      "call": "where",
+      "function": "list_users",
+      "entities": [
+        "customer_profiles"
+      ],
+      "selected_entities": [
+        "CustomerProfileModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "customer_profiles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 84,
+      "call": "select",
+      "function": "list_users",
+      "entities": [
+        "customer_profiles"
+      ],
+      "selected_entities": [
+        "CustomerProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 88,
+      "call": "where",
+      "function": "list_users",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 88,
+      "call": "select",
+      "function": "list_users",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 92,
+      "call": "where",
+      "function": "list_users",
+      "entities": [
+        "user_roles"
+      ],
+      "selected_entities": [
+        "UserRoleModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_roles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 92,
+      "call": "join",
+      "function": "list_users",
+      "entities": [
+        "user_roles",
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel",
+        "UserRoleModel"
+      ],
+      "columns": [
+        "id",
+        "role_id"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "id"
+        ],
+        "user_roles": [
+          "role_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 92,
+      "call": "select",
+      "function": "list_users",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 109,
+      "call": "where",
+      "function": "get_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 109,
+      "call": "select",
+      "function": "get_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 117,
+      "call": "where",
+      "function": "get_user",
+      "entities": [
+        "customer_profiles"
+      ],
+      "selected_entities": [
+        "CustomerProfileModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "customer_profiles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 117,
+      "call": "select",
+      "function": "get_user",
+      "entities": [
+        "customer_profiles"
+      ],
+      "selected_entities": [
+        "CustomerProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 121,
+      "call": "where",
+      "function": "get_user",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 121,
+      "call": "select",
+      "function": "get_user",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 125,
+      "call": "where",
+      "function": "get_user",
+      "entities": [
+        "user_roles"
+      ],
+      "selected_entities": [
+        "UserRoleModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_roles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 125,
+      "call": "join",
+      "function": "get_user",
+      "entities": [
+        "user_roles",
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel",
+        "UserRoleModel"
+      ],
+      "columns": [
+        "id",
+        "role_id"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "id"
+        ],
+        "user_roles": [
+          "role_id"
+        ]
+      }
+    },
+    {
+      "file": "app/api/v1/users.py",
+      "line": 125,
+      "call": "select",
+      "function": "get_user",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/dependencies.py",
+      "line": 100,
+      "call": "where",
+      "function": "get_current_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/dependencies.py",
+      "line": 100,
+      "call": "select",
+      "function": "get_current_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/dependencies.py",
+      "line": 137,
+      "call": "where",
+      "function": "get_optional_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/dependencies.py",
+      "line": 137,
+      "call": "select",
+      "function": "get_optional_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 28,
+      "call": "where",
+      "function": "get_employee_by_id",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id",
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 28,
+      "call": "select",
+      "function": "get_employee_by_id",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 37,
+      "call": "where",
+      "function": "get_employee_by_code",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [
+        "employee_code"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "employee_code"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 37,
+      "call": "join",
+      "function": "get_employee_by_code",
+      "entities": [
+        "employee_profiles",
+        "users"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel",
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "user_id"
+        ],
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 37,
+      "call": "select",
+      "function": "get_employee_by_code",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 46,
+      "call": "where",
+      "function": "email_exists",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 46,
+      "call": "select",
+      "function": "email_exists",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 50,
+      "call": "where",
+      "function": "phone_exists",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 50,
+      "call": "select",
+      "function": "phone_exists",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 55,
+      "call": "where",
+      "function": "employee_code_exists",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [
+        "employee_code"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "employee_code"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 55,
+      "call": "select",
+      "function": "employee_code_exists",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 68,
+      "call": "where",
+      "function": "list_employees",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 68,
+      "call": "select",
+      "function": "list_employees",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 74,
+      "call": "where",
+      "function": "list_employees",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "users": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 78,
+      "call": "where",
+      "function": "list_employees",
+      "entities": [
+        "users",
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel",
+        "UserModel"
+      ],
+      "columns": [
+        "designation",
+        "email",
+        "employee_code",
+        "full_name"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "designation",
+          "employee_code"
+        ],
+        "users": [
+          "email",
+          "full_name"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 78,
+      "call": "outerjoin",
+      "function": "list_employees",
+      "entities": [
+        "employee_profiles",
+        "users"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel",
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "user_id"
+        ],
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 89,
+      "call": "where",
+      "function": "list_employees",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [
+        "department_id"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 89,
+      "call": "join",
+      "function": "list_employees",
+      "entities": [
+        "employee_profiles",
+        "users"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel",
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "user_id"
+        ],
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 97,
+      "call": "order_by",
+      "function": "list_employees",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "users": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 109,
+      "call": "where",
+      "function": "get_department",
+      "entities": [
+        "employee_department"
+      ],
+      "selected_entities": [
+        "DepartmentModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "employee_department": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 109,
+      "call": "select",
+      "function": "get_department",
+      "entities": [
+        "employee_department"
+      ],
+      "selected_entities": [
+        "DepartmentModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 115,
+      "call": "where",
+      "function": "get_department_by_name",
+      "entities": [
+        "employee_department"
+      ],
+      "selected_entities": [
+        "DepartmentModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "employee_department": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 115,
+      "call": "select",
+      "function": "get_department_by_name",
+      "entities": [
+        "employee_department"
+      ],
+      "selected_entities": [
+        "DepartmentModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 121,
+      "call": "order_by",
+      "function": "list_departments",
+      "entities": [
+        "employee_department"
+      ],
+      "selected_entities": [
+        "DepartmentModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "employee_department": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 121,
+      "call": "select",
+      "function": "list_departments",
+      "entities": [
+        "employee_department"
+      ],
+      "selected_entities": [
+        "DepartmentModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 127,
+      "call": "where",
+      "function": "get_section",
+      "entities": [
+        "employee_section"
+      ],
+      "selected_entities": [
+        "SectionModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "employee_section": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 127,
+      "call": "select",
+      "function": "get_section",
+      "entities": [
+        "employee_section"
+      ],
+      "selected_entities": [
+        "SectionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 132,
+      "call": "select",
+      "function": "list_sections",
+      "entities": [
+        "employee_section"
+      ],
+      "selected_entities": [
+        "SectionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 134,
+      "call": "where",
+      "function": "list_sections",
+      "entities": [
+        "employee_section"
+      ],
+      "selected_entities": [
+        "SectionModel"
+      ],
+      "columns": [
+        "department_id"
+      ],
+      "columns_by_table": {
+        "employee_section": [
+          "department_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 135,
+      "call": "order_by",
+      "function": "list_sections",
+      "entities": [
+        "employee_section"
+      ],
+      "selected_entities": [
+        "SectionModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "employee_section": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 144,
+      "call": "where",
+      "function": "get_attendance",
+      "entities": [
+        "employee_attendance"
+      ],
+      "selected_entities": [
+        "AttendanceModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "employee_attendance": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 144,
+      "call": "select",
+      "function": "get_attendance",
+      "entities": [
+        "employee_attendance"
+      ],
+      "selected_entities": [
+        "AttendanceModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 151,
+      "call": "where",
+      "function": "list_attendance",
+      "entities": [
+        "employee_attendance"
+      ],
+      "selected_entities": [
+        "AttendanceModel"
+      ],
+      "columns": [
+        "employee_id"
+      ],
+      "columns_by_table": {
+        "employee_attendance": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 155,
+      "call": "order_by",
+      "function": "list_attendance",
+      "entities": [
+        "employee_attendance"
+      ],
+      "selected_entities": [
+        "AttendanceModel"
+      ],
+      "columns": [
+        "attendance_date"
+      ],
+      "columns_by_table": {
+        "employee_attendance": [
+          "attendance_date"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 155,
+      "call": "where",
+      "function": "list_attendance",
+      "entities": [
+        "employee_attendance"
+      ],
+      "selected_entities": [
+        "AttendanceModel"
+      ],
+      "columns": [
+        "employee_id"
+      ],
+      "columns_by_table": {
+        "employee_attendance": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 155,
+      "call": "select",
+      "function": "list_attendance",
+      "entities": [
+        "employee_attendance"
+      ],
+      "selected_entities": [
+        "AttendanceModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 170,
+      "call": "where",
+      "function": "get_target",
+      "entities": [
+        "employee_target"
+      ],
+      "selected_entities": [
+        "TargetModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "employee_target": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 170,
+      "call": "select",
+      "function": "get_target",
+      "entities": [
+        "employee_target"
+      ],
+      "selected_entities": [
+        "TargetModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 177,
+      "call": "where",
+      "function": "list_targets",
+      "entities": [
+        "employee_target"
+      ],
+      "selected_entities": [
+        "TargetModel"
+      ],
+      "columns": [
+        "employee_id"
+      ],
+      "columns_by_table": {
+        "employee_target": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 181,
+      "call": "order_by",
+      "function": "list_targets",
+      "entities": [
+        "employee_target"
+      ],
+      "selected_entities": [
+        "TargetModel"
+      ],
+      "columns": [
+        "period_start"
+      ],
+      "columns_by_table": {
+        "employee_target": [
+          "period_start"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 181,
+      "call": "where",
+      "function": "list_targets",
+      "entities": [
+        "employee_target"
+      ],
+      "selected_entities": [
+        "TargetModel"
+      ],
+      "columns": [
+        "employee_id"
+      ],
+      "columns_by_table": {
+        "employee_target": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 181,
+      "call": "select",
+      "function": "list_targets",
+      "entities": [
+        "employee_target"
+      ],
+      "selected_entities": [
+        "TargetModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 196,
+      "call": "where",
+      "function": "get_performance",
+      "entities": [
+        "employee_performance"
+      ],
+      "selected_entities": [
+        "PerformanceModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "employee_performance": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 196,
+      "call": "select",
+      "function": "get_performance",
+      "entities": [
+        "employee_performance"
+      ],
+      "selected_entities": [
+        "PerformanceModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 203,
+      "call": "where",
+      "function": "list_performance",
+      "entities": [
+        "employee_performance"
+      ],
+      "selected_entities": [
+        "PerformanceModel"
+      ],
+      "columns": [
+        "employee_id"
+      ],
+      "columns_by_table": {
+        "employee_performance": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 207,
+      "call": "order_by",
+      "function": "list_performance",
+      "entities": [
+        "employee_performance"
+      ],
+      "selected_entities": [
+        "PerformanceModel"
+      ],
+      "columns": [
+        "review_date"
+      ],
+      "columns_by_table": {
+        "employee_performance": [
+          "review_date"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 207,
+      "call": "where",
+      "function": "list_performance",
+      "entities": [
+        "employee_performance"
+      ],
+      "selected_entities": [
+        "PerformanceModel"
+      ],
+      "columns": [
+        "employee_id"
+      ],
+      "columns_by_table": {
+        "employee_performance": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/repositories/employee/employee_repository.py",
+      "line": 207,
+      "call": "select",
+      "function": "list_performance",
+      "entities": [
+        "employee_performance"
+      ],
+      "selected_entities": [
+        "PerformanceModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 110,
+      "call": "where",
+      "function": "_get_user_roles_and_permissions",
+      "entities": [
+        "user_roles"
+      ],
+      "selected_entities": [
+        "UserRoleModel"
+      ],
+      "columns": [
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_roles": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 110,
+      "call": "select",
+      "function": "_get_user_roles_and_permissions",
+      "entities": [
+        "user_roles"
+      ],
+      "selected_entities": [
+        "UserRoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 280,
+      "call": "where",
+      "function": "register_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 280,
+      "call": "select",
+      "function": "register_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 289,
+      "call": "where",
+      "function": "register_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 289,
+      "call": "select",
+      "function": "register_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 312,
+      "call": "where",
+      "function": "register_customer",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 312,
+      "call": "select",
+      "function": "register_customer",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 335,
+      "call": "where",
+      "function": "login_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 335,
+      "call": "select",
+      "function": "login_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 337,
+      "call": "where",
+      "function": "login_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 337,
+      "call": "select",
+      "function": "login_customer",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 382,
+      "call": "where",
+      "function": "login_employee",
+      "entities": [
+        "users",
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel",
+        "UserModel"
+      ],
+      "columns": [
+        "email",
+        "employee_code"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "employee_code"
+        ],
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 382,
+      "call": "outerjoin",
+      "function": "login_employee",
+      "entities": [
+        "employee_profiles",
+        "users"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel",
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "user_id"
+        ],
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 382,
+      "call": "select",
+      "function": "login_employee",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 430,
+      "call": "where",
+      "function": "register_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "status",
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "status",
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 453,
+      "call": "where",
+      "function": "register_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 453,
+      "call": "select",
+      "function": "register_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 459,
+      "call": "where",
+      "function": "register_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 459,
+      "call": "select",
+      "function": "register_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 477,
+      "call": "where",
+      "function": "register_admin",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 477,
+      "call": "select",
+      "function": "register_admin",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 505,
+      "call": "where",
+      "function": "login_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 505,
+      "call": "select",
+      "function": "login_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 507,
+      "call": "where",
+      "function": "login_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 507,
+      "call": "select",
+      "function": "login_admin",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 561,
+      "call": "where",
+      "function": "refresh_access_token",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 561,
+      "call": "select",
+      "function": "refresh_access_token",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 569,
+      "call": "where",
+      "function": "refresh_access_token",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [
+        "expires_at",
+        "is_revoked",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_sessions": [
+          "expires_at",
+          "is_revoked",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 569,
+      "call": "select",
+      "function": "refresh_access_token",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 617,
+      "call": "where",
+      "function": "logout",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [
+        "is_revoked",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_sessions": [
+          "is_revoked",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 617,
+      "call": "select",
+      "function": "logout",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 649,
+      "call": "where",
+      "function": "change_password",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 649,
+      "call": "select",
+      "function": "change_password",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 669,
+      "call": "where",
+      "function": "change_password",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [
+        "is_revoked",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_sessions": [
+          "is_revoked",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 669,
+      "call": "select",
+      "function": "change_password",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 741,
+      "call": "where",
+      "function": "forgot_password",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 741,
+      "call": "select",
+      "function": "forgot_password",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 743,
+      "call": "where",
+      "function": "forgot_password",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 743,
+      "call": "select",
+      "function": "forgot_password",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 820,
+      "call": "where",
+      "function": "reset_password_with_user_id",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 820,
+      "call": "select",
+      "function": "reset_password_with_user_id",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 830,
+      "call": "where",
+      "function": "reset_password_with_user_id",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [
+        "is_revoked",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_sessions": [
+          "is_revoked",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/auth_service.py",
+      "line": 830,
+      "call": "select",
+      "function": "reset_password_with_user_id",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 207,
+      "call": "where",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "oauth_accounts"
+      ],
+      "selected_entities": [
+        "OAuthAccountModel"
+      ],
+      "columns": [
+        "provider",
+        "provider_user_id"
+      ],
+      "columns_by_table": {
+        "oauth_accounts": [
+          "provider",
+          "provider_user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 207,
+      "call": "select",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "oauth_accounts"
+      ],
+      "selected_entities": [
+        "OAuthAccountModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 219,
+      "call": "where",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 219,
+      "call": "select",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 231,
+      "call": "where",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 231,
+      "call": "select",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 270,
+      "call": "where",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/auth/oauth_service.py",
+      "line": 270,
+      "call": "select",
+      "function": "_find_or_create_oauth_user",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 99,
+      "call": "where",
+      "function": "_get_category_or_404",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "id",
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "id",
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 99,
+      "call": "select",
+      "function": "_get_category_or_404",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 110,
+      "call": "where",
+      "function": "_get_subcategory_or_404",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 110,
+      "call": "select",
+      "function": "_get_subcategory_or_404",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 120,
+      "call": "where",
+      "function": "_product_count_for_category",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "category",
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "category",
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 120,
+      "call": "select_from",
+      "function": "_product_count_for_category",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 130,
+      "call": "where",
+      "function": "_product_count_for_subcategory",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "category",
+        "published",
+        "status",
+        "subcategory"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "category",
+          "published",
+          "status",
+          "subcategory"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 130,
+      "call": "select_from",
+      "function": "_product_count_for_subcategory",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 140,
+      "call": "where",
+      "function": "_assert_slug_unique",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 140,
+      "call": "select",
+      "function": "_assert_slug_unique",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 142,
+      "call": "where",
+      "function": "_assert_slug_unique",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 150,
+      "call": "where",
+      "function": "_assert_sub_slug_unique",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "category_id",
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "category_id",
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 150,
+      "call": "select",
+      "function": "_assert_sub_slug_unique",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 155,
+      "call": "where",
+      "function": "_assert_sub_slug_unique",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 173,
+      "call": "select",
+      "function": "list_categories",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 175,
+      "call": "where",
+      "function": "list_categories",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 177,
+      "call": "where",
+      "function": "list_categories",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "featured"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "featured"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 178,
+      "call": "order_by",
+      "function": "list_categories",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "name",
+        "sort_order"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "name",
+          "sort_order"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 208,
+      "call": "where",
+      "function": "list_subcategories",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "category_id"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "category_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 208,
+      "call": "select",
+      "function": "list_subcategories",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 210,
+      "call": "where",
+      "function": "list_subcategories",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/category_service.py",
+      "line": 211,
+      "call": "order_by",
+      "function": "list_subcategories",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "name",
+        "sort_order"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "name",
+          "sort_order"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 128,
+      "call": "where",
+      "function": "_get_or_404",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "id",
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "id",
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 128,
+      "call": "select",
+      "function": "_get_or_404",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 140,
+      "call": "where",
+      "function": "_assert_slug_unique",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 140,
+      "call": "select",
+      "function": "_assert_slug_unique",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 142,
+      "call": "where",
+      "function": "_assert_slug_unique",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 172,
+      "call": "where",
+      "function": "_rule_product_ids",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 172,
+      "call": "select",
+      "function": "_rule_product_ids",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 187,
+      "call": "where",
+      "function": "_rule_product_ids",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 187,
+      "call": "select",
+      "function": "_rule_product_ids",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 228,
+      "call": "where",
+      "function": "_label_match_product_ids",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "collection",
+        "collections",
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "collection",
+          "collections",
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 228,
+      "call": "select",
+      "function": "_label_match_product_ids",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 262,
+      "call": "select",
+      "function": "list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 264,
+      "call": "where",
+      "function": "list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 266,
+      "call": "where",
+      "function": "list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "featured"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "featured"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 267,
+      "call": "order_by",
+      "function": "list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "name",
+        "sort_order"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "name",
+          "sort_order"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 312,
+      "call": "select",
+      "function": "admin_list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 314,
+      "call": "where",
+      "function": "admin_list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 316,
+      "call": "where",
+      "function": "admin_list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "featured"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "featured"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 318,
+      "call": "where",
+      "function": "admin_list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 319,
+      "call": "order_by",
+      "function": "admin_list_collections",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "name",
+        "sort_order"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "name",
+          "sort_order"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 506,
+      "call": "group_by",
+      "function": "taxonomy_metrics",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 506,
+      "call": "select",
+      "function": "taxonomy_metrics",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "id",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "id",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 513,
+      "call": "select",
+      "function": "taxonomy_metrics",
+      "entities": [
+        "catalog_category"
+      ],
+      "selected_entities": [
+        "CategoryModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_category": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 516,
+      "call": "select",
+      "function": "taxonomy_metrics",
+      "entities": [
+        "catalog_subcategory"
+      ],
+      "selected_entities": [
+        "SubcategoryModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_subcategory": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 535,
+      "call": "order_by",
+      "function": "taxonomy_product_counts",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "catalog_collection": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/collection_service.py",
+      "line": 535,
+      "call": "select",
+      "function": "taxonomy_product_counts",
+      "entities": [
+        "catalog_collection"
+      ],
+      "selected_entities": [
+        "CollectionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/explore_service.py",
+      "line": 458,
+      "call": "where",
+      "function": "_build_category_cards",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "category",
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "category",
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/explore_service.py",
+      "line": 458,
+      "call": "select",
+      "function": "_build_category_cards",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "category"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "category"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 245,
+      "call": "where",
+      "function": "_get_or_404",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id",
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id",
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 245,
+      "call": "select",
+      "function": "_get_or_404",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 424,
+      "call": "where",
+      "function": "list_storefront_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 424,
+      "call": "select",
+      "function": "list_storefront_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 715,
+      "call": "where",
+      "function": "get_recommendations",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id",
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id",
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 715,
+      "call": "select",
+      "function": "get_recommendations",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 721,
+      "call": "where",
+      "function": "get_recommendations",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "category"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "category"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 740,
+      "call": "where",
+      "function": "get_recently_viewed",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id",
+        "published",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id",
+          "published",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 740,
+      "call": "select",
+      "function": "get_recently_viewed",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 773,
+      "call": "select",
+      "function": "list_admin_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 775,
+      "call": "where",
+      "function": "list_admin_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 777,
+      "call": "where",
+      "function": "list_admin_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "category"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "category"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 779,
+      "call": "where",
+      "function": "list_admin_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "assigned_employee_id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "assigned_employee_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 782,
+      "call": "where",
+      "function": "list_admin_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "sku"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id",
+          "name",
+          "sku"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 808,
+      "call": "where",
+      "function": "create_product",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 808,
+      "call": "select",
+      "function": "create_product",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 857,
+      "call": "where",
+      "function": "create_draft",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 857,
+      "call": "select",
+      "function": "create_draft",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1091,
+      "call": "where",
+      "function": "change_product_id",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1091,
+      "call": "select",
+      "function": "change_product_id",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1186,
+      "call": "where",
+      "function": "check_availability",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "sku"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "sku"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1186,
+      "call": "select",
+      "function": "check_availability",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1190,
+      "call": "where",
+      "function": "check_availability",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1190,
+      "call": "select",
+      "function": "check_availability",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1208,
+      "call": "where",
+      "function": "get_next_id",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1208,
+      "call": "select",
+      "function": "get_next_id",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1233,
+      "call": "select",
+      "function": "get_metrics",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1236,
+      "call": "where",
+      "function": "get_metrics",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1236,
+      "call": "select",
+      "function": "get_metrics",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "review_flags"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "review_flags"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1248,
+      "call": "where",
+      "function": "get_metrics",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "assigned_employee_id",
+        "status"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "assigned_employee_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1287,
+      "call": "where",
+      "function": "_generate_unique_slug",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "slug"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "slug"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1287,
+      "call": "select",
+      "function": "_generate_unique_slug",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1301,
+      "call": "where",
+      "function": "_generate_unique_sku",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "sku"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "sku"
+        ]
+      }
+    },
+    {
+      "file": "app/services/catalog/product_service.py",
+      "line": 1301,
+      "call": "select",
+      "function": "_generate_unique_sku",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 103,
+      "call": "where",
+      "function": "_get_or_create_cart",
+      "entities": [
+        "commerce_cart"
+      ],
+      "selected_entities": [
+        "CartModel"
+      ],
+      "columns": [
+        "customer_id"
+      ],
+      "columns_by_table": {
+        "commerce_cart": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 103,
+      "call": "select",
+      "function": "_get_or_create_cart",
+      "entities": [
+        "commerce_cart"
+      ],
+      "selected_entities": [
+        "CartModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 118,
+      "call": "where",
+      "function": "_resolve_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 118,
+      "call": "select",
+      "function": "_resolve_products",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 208,
+      "call": "where",
+      "function": "_find_coupon",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "code"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 208,
+      "call": "select",
+      "function": "_find_coupon",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 396,
+      "call": "where",
+      "function": "add_item",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 396,
+      "call": "select",
+      "function": "add_item",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 407,
+      "call": "where",
+      "function": "add_item",
+      "entities": [
+        "commerce_cart_item"
+      ],
+      "selected_entities": [
+        "CartItemModel"
+      ],
+      "columns": [
+        "cart_id",
+        "color",
+        "product_id",
+        "size"
+      ],
+      "columns_by_table": {
+        "commerce_cart_item": [
+          "cart_id",
+          "color",
+          "product_id",
+          "size"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 407,
+      "call": "select",
+      "function": "add_item",
+      "entities": [
+        "commerce_cart_item"
+      ],
+      "selected_entities": [
+        "CartItemModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 446,
+      "call": "where",
+      "function": "update_item",
+      "entities": [
+        "commerce_cart_item"
+      ],
+      "selected_entities": [
+        "CartItemModel"
+      ],
+      "columns": [
+        "cart_id"
+      ],
+      "columns_by_table": {
+        "commerce_cart_item": [
+          "cart_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 446,
+      "call": "select",
+      "function": "update_item",
+      "entities": [
+        "commerce_cart_item"
+      ],
+      "selected_entities": [
+        "CartItemModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 463,
+      "call": "where",
+      "function": "update_item",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 463,
+      "call": "select",
+      "function": "update_item",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 479,
+      "call": "where",
+      "function": "remove_item",
+      "entities": [
+        "commerce_cart_item"
+      ],
+      "selected_entities": [
+        "CartItemModel"
+      ],
+      "columns": [
+        "cart_id"
+      ],
+      "columns_by_table": {
+        "commerce_cart_item": [
+          "cart_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 479,
+      "call": "select",
+      "function": "remove_item",
+      "entities": [
+        "commerce_cart_item"
+      ],
+      "selected_entities": [
+        "CartItemModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 539,
+      "call": "where",
+      "function": "apply_coupon",
+      "entities": [
+        "commerce_coupon_redemption"
+      ],
+      "selected_entities": [
+        "CouponRedemptionModel"
+      ],
+      "columns": [
+        "coupon_id",
+        "customer_id"
+      ],
+      "columns_by_table": {
+        "commerce_coupon_redemption": [
+          "coupon_id",
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/cart_service.py",
+      "line": 539,
+      "call": "select",
+      "function": "apply_coupon",
+      "entities": [
+        "commerce_coupon_redemption"
+      ],
+      "selected_entities": [
+        "CouponRedemptionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/wishlist_service.py",
+      "line": 33,
+      "call": "where",
+      "function": "_get_or_create_wishlist",
+      "entities": [
+        "commerce_wishlist"
+      ],
+      "selected_entities": [
+        "WishlistModel"
+      ],
+      "columns": [
+        "customer_id"
+      ],
+      "columns_by_table": {
+        "commerce_wishlist": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/wishlist_service.py",
+      "line": 33,
+      "call": "select",
+      "function": "_get_or_create_wishlist",
+      "entities": [
+        "commerce_wishlist"
+      ],
+      "selected_entities": [
+        "WishlistModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/commerce/wishlist_service.py",
+      "line": 79,
+      "call": "where",
+      "function": "remove_product",
+      "entities": [
+        "commerce_wishlist_item"
+      ],
+      "selected_entities": [
+        "WishlistItemModel"
+      ],
+      "columns": [
+        "product_id",
+        "wishlist_id"
+      ],
+      "columns_by_table": {
+        "commerce_wishlist_item": [
+          "product_id",
+          "wishlist_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/commerce/wishlist_service.py",
+      "line": 79,
+      "call": "select",
+      "function": "remove_product",
+      "entities": [
+        "commerce_wishlist_item"
+      ],
+      "selected_entities": [
+        "WishlistItemModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/address_service.py",
+      "line": 22,
+      "call": "where",
+      "function": "_get_profile",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/address_service.py",
+      "line": 22,
+      "call": "select",
+      "function": "_get_profile",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/address_service.py",
+      "line": 40,
+      "call": "where",
+      "function": "_get_address_owned_by",
+      "entities": [
+        "customer_address"
+      ],
+      "selected_entities": [
+        "AddressModel"
+      ],
+      "columns": [
+        "customer_id",
+        "id"
+      ],
+      "columns_by_table": {
+        "customer_address": [
+          "customer_id",
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/address_service.py",
+      "line": 40,
+      "call": "select",
+      "function": "_get_address_owned_by",
+      "entities": [
+        "customer_address"
+      ],
+      "selected_entities": [
+        "AddressModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/address_service.py",
+      "line": 52,
+      "call": "where",
+      "function": "_demote_existing_default",
+      "entities": [
+        "customer_address"
+      ],
+      "selected_entities": [
+        "AddressModel"
+      ],
+      "columns": [
+        "customer_id",
+        "is_default"
+      ],
+      "columns_by_table": {
+        "customer_address": [
+          "customer_id",
+          "is_default"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/address_service.py",
+      "line": 52,
+      "call": "select",
+      "function": "_demote_existing_default",
+      "entities": [
+        "customer_address"
+      ],
+      "selected_entities": [
+        "AddressModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 34,
+      "call": "where",
+      "function": "_get_profile_for_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id",
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 34,
+      "call": "select",
+      "function": "_get_profile_for_user",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 73,
+      "call": "where",
+      "function": "get_me",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [
+        "expires_at",
+        "is_revoked",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_sessions": [
+          "expires_at",
+          "is_revoked",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 73,
+      "call": "select",
+      "function": "get_me",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 107,
+      "call": "where",
+      "function": "update_profile",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email",
+        "id"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email",
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 107,
+      "call": "select",
+      "function": "update_profile",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 118,
+      "call": "where",
+      "function": "update_profile",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id",
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 118,
+      "call": "select",
+      "function": "update_profile",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 180,
+      "call": "where",
+      "function": "revoke_other_sessions",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [
+        "expires_at",
+        "is_revoked",
+        "user_id"
+      ],
+      "columns_by_table": {
+        "user_sessions": [
+          "expires_at",
+          "is_revoked",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 180,
+      "call": "select",
+      "function": "revoke_other_sessions",
+      "entities": [
+        "user_sessions"
+      ],
+      "selected_entities": [
+        "UserSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 215,
+      "call": "where",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 215,
+      "call": "select",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 227,
+      "call": "where",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email",
+        "full_name",
+        "phone"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email",
+          "full_name",
+          "phone"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 234,
+      "call": "select_from",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 235,
+      "call": "where",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 235,
+      "call": "select",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 241,
+      "call": "select_from",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email",
+        "full_name",
+        "phone",
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email",
+          "full_name",
+          "phone",
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 242,
+      "call": "where",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "email",
+        "full_name",
+        "phone",
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "email",
+          "full_name",
+          "phone",
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 242,
+      "call": "select",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 257,
+      "call": "order_by",
+      "function": "list_customers",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "users": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 289,
+      "call": "where",
+      "function": "get_customer_detail",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [
+        "id",
+        "user_type"
+      ],
+      "columns_by_table": {
+        "users": [
+          "id",
+          "user_type"
+        ]
+      }
+    },
+    {
+      "file": "app/services/customer/customer_service.py",
+      "line": 289,
+      "call": "select",
+      "function": "get_customer_detail",
+      "entities": [
+        "users"
+      ],
+      "selected_entities": [
+        "UserModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 81,
+      "call": "where",
+      "function": "_next_employee_code",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [
+        "employee_code"
+      ],
+      "columns_by_table": {
+        "employee_profiles": [
+          "employee_code"
+        ]
+      }
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 81,
+      "call": "select",
+      "function": "_next_employee_code",
+      "entities": [
+        "employee_profiles"
+      ],
+      "selected_entities": [
+        "EmployeeProfileModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 161,
+      "call": "where",
+      "function": "create_employee",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 161,
+      "call": "select",
+      "function": "create_employee",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 166,
+      "call": "where",
+      "function": "create_employee",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 166,
+      "call": "select",
+      "function": "create_employee",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 613,
+      "call": "where",
+      "function": "create_employee",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [
+        "name"
+      ],
+      "columns_by_table": {
+        "roles": [
+          "name"
+        ]
+      }
+    },
+    {
+      "file": "app/services/employee/employee_service.py",
+      "line": 613,
+      "call": "select",
+      "function": "create_employee",
+      "entities": [
+        "roles"
+      ],
+      "selected_entities": [
+        "RoleModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/notification/notification_service.py",
+      "line": 55,
+      "call": "where",
+      "function": "_load_row",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "admin_setting": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/notification/notification_service.py",
+      "line": 55,
+      "call": "select",
+      "function": "_load_row",
+      "entities": [
+        "admin_setting"
+      ],
+      "selected_entities": [
+        "SettingModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 165,
+      "call": "where",
+      "function": "_load_order",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 165,
+      "call": "select",
+      "function": "_load_order",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 182,
+      "call": "where",
+      "function": "_load_order_by_number",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "order_number"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "order_number"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 182,
+      "call": "select",
+      "function": "_load_order_by_number",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 256,
+      "call": "where",
+      "function": "place_order",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "catalog_product": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 256,
+      "call": "select",
+      "function": "place_order",
+      "entities": [
+        "catalog_product"
+      ],
+      "selected_entities": [
+        "ProductModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 315,
+      "call": "where",
+      "function": "place_order",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [
+        "code"
+      ],
+      "columns_by_table": {
+        "commerce_coupon": [
+          "code"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 315,
+      "call": "select",
+      "function": "place_order",
+      "entities": [
+        "commerce_coupon"
+      ],
+      "selected_entities": [
+        "CouponModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 421,
+      "call": "order_by",
+      "function": "list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 421,
+      "call": "where",
+      "function": "list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "customer_id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 421,
+      "call": "select",
+      "function": "list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 430,
+      "call": "select_from",
+      "function": "list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "customer_id",
+        "id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "customer_id",
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 431,
+      "call": "where",
+      "function": "list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "customer_id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 431,
+      "call": "select",
+      "function": "list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 611,
+      "call": "where",
+      "function": "claim_guest_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "customer_id",
+        "guest_email"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "customer_id",
+          "guest_email"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 611,
+      "call": "select",
+      "function": "claim_guest_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 644,
+      "call": "select",
+      "function": "admin_list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 655,
+      "call": "order_by",
+      "function": "admin_list_orders",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 902,
+      "call": "where",
+      "function": "_load_return",
+      "entities": [
+        "orders_return_order"
+      ],
+      "selected_entities": [
+        "ReturnOrderModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "orders_return_order": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/order_service.py",
+      "line": 902,
+      "call": "select",
+      "function": "_load_return",
+      "entities": [
+        "orders_return_order"
+      ],
+      "selected_entities": [
+        "ReturnOrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/return_service.py",
+      "line": 79,
+      "call": "where",
+      "function": "_load_return",
+      "entities": [
+        "orders_return_order"
+      ],
+      "selected_entities": [
+        "ReturnOrderModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "orders_return_order": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/orders/return_service.py",
+      "line": 79,
+      "call": "select",
+      "function": "_load_return",
+      "entities": [
+        "orders_return_order"
+      ],
+      "selected_entities": [
+        "ReturnOrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/return_service.py",
+      "line": 115,
+      "call": "select",
+      "function": "list_returns",
+      "entities": [
+        "orders_return_order"
+      ],
+      "selected_entities": [
+        "ReturnOrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/orders/return_service.py",
+      "line": 123,
+      "call": "order_by",
+      "function": "list_returns",
+      "entities": [
+        "orders_return_order"
+      ],
+      "selected_entities": [
+        "ReturnOrderModel"
+      ],
+      "columns": [
+        "created_at"
+      ],
+      "columns_by_table": {
+        "orders_return_order": [
+          "created_at"
+        ]
+      }
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 188,
+      "call": "where",
+      "function": "_load_session",
+      "entities": [
+        "payment_sessions"
+      ],
+      "selected_entities": [
+        "PaymentSessionModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "payment_sessions": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 188,
+      "call": "select",
+      "function": "_load_session",
+      "entities": [
+        "payment_sessions"
+      ],
+      "selected_entities": [
+        "PaymentSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 198,
+      "call": "where",
+      "function": "_load_session_by_razorpay_order",
+      "entities": [
+        "payment_sessions"
+      ],
+      "selected_entities": [
+        "PaymentSessionModel"
+      ],
+      "columns": [
+        "razorpay_order_id"
+      ],
+      "columns_by_table": {
+        "payment_sessions": [
+          "razorpay_order_id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 198,
+      "call": "select",
+      "function": "_load_session_by_razorpay_order",
+      "entities": [
+        "payment_sessions"
+      ],
+      "selected_entities": [
+        "PaymentSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 210,
+      "call": "where",
+      "function": "_load_order",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [
+        "id"
+      ],
+      "columns_by_table": {
+        "orders_order": [
+          "id"
+        ]
+      }
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 210,
+      "call": "select",
+      "function": "_load_order",
+      "entities": [
+        "orders_order"
+      ],
+      "selected_entities": [
+        "OrderModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 245,
+      "call": "where",
+      "function": "create_session",
+      "entities": [
+        "payment_sessions"
+      ],
+      "selected_entities": [
+        "PaymentSessionModel"
+      ],
+      "columns": [
+        "idempotency_key"
+      ],
+      "columns_by_table": {
+        "payment_sessions": [
+          "idempotency_key"
+        ]
+      }
+    },
+    {
+      "file": "app/services/payments/payment_service.py",
+      "line": 245,
+      "call": "select",
+      "function": "create_session",
+      "entities": [
+        "payment_sessions"
+      ],
+      "selected_entities": [
+        "PaymentSessionModel"
+      ],
+      "columns": [],
+      "columns_by_table": {}
+    }
+  ]
+}
