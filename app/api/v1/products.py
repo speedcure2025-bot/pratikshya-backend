@@ -46,7 +46,7 @@ URL mapping (API_CONTRACT.md → implementation):
   POST /products/{id}/submit-review             ← status = PENDING_REVIEW
 """
 
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi_cache.decorator import cache
@@ -184,6 +184,9 @@ async def add_recently_viewed(
 ):
     service = ProductService(db)
     await service.add_recently_viewed(current_user.id, product_id)
+    if current_user.user_type == "customer":
+        from app.services.catalog.recommendation_service import record_behavior_safely
+        await record_behavior_safely(db, current_user.id, product_id, "VIEW")
     return OkResponse()
 
 
@@ -218,14 +221,19 @@ async def get_product(
         "Same visibility gate applies. Never returns the source product."
     ),
 )
-@cache(expire=TTL_RECOMMENDATIONS)
 async def get_recommendations(
     id: str,
-    type: str = Query("related", alias="type"),
+    type: Literal["related", "complete-the-look", "recommended", "cart"] = Query("related", alias="type"),
     db: AsyncSession = Depends(get_db),
 ):
     service = ProductService(db)
-    items = await service.get_recommendations(id, rec_type=type)
+    from sqlalchemy.exc import SQLAlchemyError
+    from app.api.v1.recommendations import unavailable
+    try:
+        items = await service.get_recommendations(id, rec_type=type)
+    except SQLAlchemyError:
+        await db.rollback()
+        raise unavailable()
     return RecommendationsResponse(items=items)
 
 

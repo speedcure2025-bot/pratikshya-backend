@@ -1,7 +1,7 @@
 from datetime import date
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 # --------------------------------------------------------------------------- #
@@ -25,6 +25,15 @@ class EmployeeCreateRequest(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=20)
 
+    @field_validator("phone", "email", mode="before")
+    @classmethod
+    def _coerce_empty_contact(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     # Role — required per spec; also stored on EmployeeProfile
     role: Optional[str] = Field(None, description="One of the 8 RBAC role names e.g. SALES_EXECUTIVE")
 
@@ -35,18 +44,46 @@ class EmployeeCreateRequest(BaseModel):
     section_id: Optional[str] = None
 
     # Store / floor assignment
-    store: Optional[str] = Field(None, max_length=100, description="Store or floor assignment")
+    # NOTE: accepted from the frontend form for UI completeness but NOT
+    # persisted — EmployeeProfileModel has no `store` column. Will be
+    # wired to the DB once the store-assignment feature is implemented.
+    store: Optional[str] = Field(None, max_length=100, description="Store or floor assignment (UI-only; not persisted to DB)")
 
-    # Joining / shift
-    joiningDate: Optional[date] = Field(None, description="ISO date YYYY-MM-DD")
-    shift: Optional[str] = Field(None, max_length=50, description="e.g. MORNING, EVENING")
+    # Joining / shift — intentionally optional: the employee profile table
+    # carries no joining_date or shift column (see app/models/employee/employee.py);
+    # these fields are UI-only and must not block SUPER_ADMIN/ADMIN account
+    # creation where the employment block is hidden. Empty strings from the
+    # UI are normalised to None so Optional[date] does not 422.
+    joiningDate: Optional[date] = Field(None, description="ISO date YYYY-MM-DD — UI-only; not persisted to DB")
+    shift: Optional[str] = Field(None, max_length=50, description="e.g. MORNING, EVENING — UI-only; not persisted to DB")
+
+    @field_validator("joiningDate", mode="before")
+    @classmethod
+    def _coerce_empty_joining_date(cls, value):
+        if value == "" or (isinstance(value, str) and not value.strip()):
+            return None
+        return value
+
+    # Account level (unified four-level model). Omitted == EMPLOYEE.
+    # The SERVER enforces the creation matrix and the delegation ceiling —
+    # ADMIN/SUPER_ADMIN targets require an admin creator, SUPER_EMPLOYEE
+    # targets require SUPER_ADMIN/ADMIN/SUPER_EMPLOYEE, and an EMPLOYEE
+    # creator is always rejected.
+    accountLevel: Optional[str] = Field(
+        None, description="SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE (default EMPLOYEE)"
+    )
 
     # Permission override
     permissionMode: Optional[str] = Field(
         None, description="role | custom — if custom, permissions[] is applied"
     )
     permissions: Optional[List[str]] = Field(
-        None, description="Custom permission list (used when permissionMode=custom)"
+        None,
+        description=(
+            "Capability assignment at creation. Accepts canonical capability codes "
+            "(catalogue.view, orders.manage, people.view …) or the legacy granular "
+            "codes; the backend maps both onto the same authorization model."
+        ),
     )
 
     # Designation (legacy / additional detail)
@@ -71,7 +108,12 @@ class EmployeeCreateRequest(BaseModel):
 
 
 class EmployeeUpdateRequest(BaseModel):
-    """Partial update payload for an employee profile (all fields optional)."""
+    """Partial update payload for an employee profile (all fields optional).
+
+    NOTE: `email` is intentionally absent. Email is a login identifier and
+    cannot be changed after account creation via this endpoint. To reassign
+    an email, delete and recreate the account.
+    """
 
     full_name: Optional[str] = Field(None, min_length=2, max_length=255)
     # also accept camelCase from spec
@@ -80,14 +122,34 @@ class EmployeeUpdateRequest(BaseModel):
 
     phone: Optional[str] = Field(None, max_length=20)
     designation: Optional[str] = Field(None, min_length=2, max_length=100)
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def _coerce_empty_phone_update(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
     department: Optional[str] = Field(None, max_length=100)
     department_id: Optional[str] = None
     section: Optional[str] = Field(None, max_length=100)
     section_id: Optional[str] = None
     store: Optional[str] = Field(None, max_length=100)
     shift: Optional[str] = Field(None, max_length=50)
-    role: Optional[str] = None
+    role: Optional[str] = Field(None, description="Business role (canonical catalogue name or legacy alias)")
+    accountLevel: Optional[str] = Field(
+        None,
+        description="SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE — SUPER_ADMIN creators only",
+    )
     joiningDate: Optional[date] = None
+
+    @field_validator("joiningDate", mode="before")
+    @classmethod
+    def _coerce_empty_joining_date_update(cls, value):
+        if value == "" or (isinstance(value, str) and not value.strip()):
+            return None
+        return value
 
     @model_validator(mode="after")
     def resolve_full_name(self) -> "EmployeeUpdateRequest":
@@ -143,9 +205,10 @@ class EmployeeProfileDTO(BaseModel):
     department: Optional[str]
     department_id: Optional[str]
     section_id: Optional[str]
-    store: Optional[str] = None
-    shift: Optional[str] = None
     joining_date: Optional[date] = None
+    # NOTE: store and shift are not persisted (no DB columns on EmployeeProfileModel).
+    # They are managed as local UI state on the frontend. Excluded from the
+    # response DTO to avoid implying the backend holds these values.
 
 
 class EmployeeResponse(BaseModel):
@@ -169,3 +232,15 @@ class EmployeeResponse(BaseModel):
     profile: Optional[EmployeeProfileDTO]
     roles: Optional[List[str]] = None
     permissions: Optional[List[str]] = None
+    # ── Unified account model ─────────────────────────────────────────────
+    # camelCase is the People-form contract. snake_case aliases are temporary
+    # compat for older readers — do not add more pairs.
+    account_level: Optional[str] = None
+    accountLevel: Optional[str] = None
+    business_role: Optional[str] = None
+    businessRole: Optional[str] = None
+    permission_mode: Optional[str] = None
+    permissionMode: Optional[str] = None
+    # Returned ONLY by the create call (one-time temporary credential);
+    # never persisted, never present on list/get responses.
+    temporaryPassword: Optional[str] = None

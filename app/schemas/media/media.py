@@ -212,12 +212,21 @@ class MediaAssetListItem(BaseModel):
 
 
 class MediaAssetListResponse(BaseModel):
-    """Successful wire shape for ``GET /media/assets``."""
+    """Successful wire shape for ``GET /media/assets``.
+
+    Pagination fields (admin consolidation): the endpoint used to return
+    EVERY registered asset with no limit — unbounded as the registry grows.
+    ``total``/``page``/``pageSize`` are additive; the default page keeps the
+    response bounded.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
     ok: bool
     items: List[MediaAssetListItem]
+    total: int = 0
+    page: int = 1
+    pageSize: int = 50
 
 
 class MediaObjectMetaResponse(BaseModel):

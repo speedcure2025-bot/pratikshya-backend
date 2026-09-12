@@ -18,6 +18,7 @@ Application-level product validation (Phase 4):
 
 from __future__ import annotations
 
+from app.services.catalog.recommendation_service import record_behavior_safely
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,7 +44,7 @@ class WishlistService:
         result = await self.db.execute(stmt)
         wishlist = result.scalars().first()
         if not wishlist:
-            wishlist = WishlistModel(customer_id=customer_id)
+            wishlist = WishlistModel(customer_id=customer_id, items=[])
             self.db.add(wishlist)
             await self.db.flush()
         return wishlist
@@ -97,6 +98,7 @@ class WishlistService:
             new_item = WishlistItemModel(wishlist=wishlist, product_id=product_id)
             self.db.add(new_item)
             await self.db.flush()
+            await record_behavior_safely(self.db, customer_id, product_id, "WISHLIST")
 
         return self._to_response(wishlist)
 
@@ -113,6 +115,7 @@ class WishlistService:
             wishlist.items.remove(present)
             await self.db.delete(present)
             await self.db.flush()
+            await record_behavior_safely(self.db, customer_id, product_id, "UNWISHLIST")
 
         return self._to_response(wishlist)
 

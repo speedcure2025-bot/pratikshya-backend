@@ -3,11 +3,11 @@
 Generated from the backend SQLAlchemy models. No external database was accessed.
 
 - **Schema**: `pratikshya`
-- **Tables**: 64
-- **Columns**: 560
-- **Foreign keys**: 34
-- **Unique constraints**: 5
-- **Indexes**: 139
+- **Tables**: 65
+- **Columns**: 580
+- **Foreign keys**: 39
+- **Unique constraints**: 8
+- **Indexes**: 148
 
 > Index matching in the verification script is by column signature + 
 > uniqueness, not by index name, because Alembic/model naming conventions differ.
@@ -1120,8 +1120,8 @@ _None (unique columns are represented by unique indexes below)._
 ### Foreign keys
 
 - `user_id` -> `users` (`users.id`) ondelete=CASCADE
-- `department_id` -> `employee_department` (`employee_department.id`) ondelete=SET NULL
 - `section_id` -> `employee_section` (`employee_section.id`) ondelete=SET NULL
+- `department_id` -> `employee_department` (`employee_department.id`) ondelete=SET NULL
 
 ### Unique constraints
 
@@ -1384,23 +1384,41 @@ _None (unique columns are represented by unique indexes below)._
 
 | Column | Type | Nullable | PK | Default (app-side) |
 |--------|------|----------|----|--------------------|
+| `placement` | `varchar(50)` | false |  | `'HOME_HERO'` |
+| `object_key` | `varchar(512)` | false |  | `` |
+| `media_asset_id` | `varchar(36)` | true |  | `` |
+| `title` | `varchar(255)` | true |  | `` |
+| `subtitle` | `varchar(500)` | true |  | `` |
+| `cta_label` | `varchar(100)` | true |  | `` |
+| `cta_href` | `varchar(500)` | true |  | `` |
+| `alt_text` | `text` | true |  | `` |
+| `sort_order` | `integer` | false |  | `0` |
+| `is_active` | `boolean` | false |  | `True` |
+| `created_by` | `varchar(36)` | true |  | `` |
+| `updated_by` | `varchar(36)` | true |  | `` |
 | `id` | `varchar(36)` | false | yes | `<callable>` |
 | `created_at` | `timestamp with time zone` | false |  | `<callable>` |
 | `updated_at` | `timestamp with time zone` | false |  | `<callable>` |
 
 ### Foreign keys
 
-_None._
+- `created_by` -> `users` (`users.id`) ondelete=SET NULL
+- `media_asset_id` -> `media_media_asset` (`media_media_asset.id`) ondelete=SET NULL
+- `updated_by` -> `users` (`users.id`) ondelete=SET NULL
 
 ### Unique constraints
 
-_None (unique columns are represented by unique indexes below)._
+- `uq_marketing_media_placement_object_key`: (placement, object_key)
 
 ### Indexes
 
 | Index (name candidates) | Columns | Unique |
 |------------------------|---------|--------|
+| `ix_marketing_media_placement_active_sort` | (placement, is_active, sort_order) | false |
+| `ix_marketing_media_placement_sort` | (placement, sort_order) | false |
 | `ix_pratikshya_media_marketing_media_id` | (id) | false |
+| `ix_pratikshya_media_marketing_media_media_asset_id` | (media_asset_id) | false |
+| `ix_pratikshya_media_marketing_media_placement` | (placement) | false |
 
 
 ## `media_media_asset`
@@ -1497,8 +1515,8 @@ _None (unique columns are represented by unique indexes below)._
 
 ### Foreign keys
 
-- `product_id` -> `catalog_product` (`catalog_product.id`) ondelete=CASCADE
 - `media_id` -> `media_media_asset` (`media_media_asset.id`) ondelete=CASCADE
+- `product_id` -> `catalog_product` (`catalog_product.id`) ondelete=CASCADE
 
 ### Unique constraints
 
@@ -1989,8 +2007,8 @@ _None (unique columns are represented by unique indexes below)._
 
 ### Foreign keys
 
-- `permission_id` -> `permissions` (`permissions.id`) ondelete=CASCADE
 - `role_id` -> `roles` (`roles.id`) ondelete=CASCADE
+- `permission_id` -> `permissions` (`permissions.id`) ondelete=CASCADE
 
 ### Unique constraints
 
@@ -2035,6 +2053,45 @@ _None (unique columns are represented by unique indexes below)._
 |------------------------|---------|--------|
 | `ix_pratikshya_roles_id` | (id) | false |
 | `ix_pratikshya_roles_name` | (name) | true |
+
+
+## `user_product_interactions`
+
+- **Schema**: `pratikshya`
+- **Primary key**: `id`
+
+### Columns
+
+| Column | Type | Nullable | PK | Default (app-side) |
+|--------|------|----------|----|--------------------|
+| `customer_id` | `varchar(36)` | false |  | `` |
+| `product_id` | `varchar(36)` | false |  | `` |
+| `event_type` | `varchar(20)` | false |  | `` |
+| `dedup_key` | `varchar(100)` | false |  | `` |
+| `event_bucket` | `bigint` | false |  | `` |
+| `id` | `varchar(36)` | false | yes | `<callable>` |
+| `created_at` | `timestamp with time zone` | false |  | `<callable>` |
+| `updated_at` | `timestamp with time zone` | false |  | `<callable>` |
+
+### Foreign keys
+
+- `customer_id` -> `users` (`users.id`) ondelete=CASCADE
+- `product_id` -> `catalog_product` (`catalog_product.id`) ondelete=CASCADE
+
+### Unique constraints
+
+- `uq_interaction_bucket`: (customer_id, product_id, event_type, event_bucket)
+- `uq_interaction_retry`: (customer_id, dedup_key)
+
+### Indexes
+
+| Index (name candidates) | Columns | Unique |
+|------------------------|---------|--------|
+| `ix_interaction_customer_recent` | (customer_id, created_at) | false |
+| `ix_interaction_product_recent` | (product_id, created_at) | false |
+| `ix_interaction_retention` | (created_at) | false |
+| `ix_interaction_type_recent` | (event_type, created_at) | false |
+| `ix_pratikshya_user_product_interactions_id` | (id) | false |
 
 
 ## `user_roles`

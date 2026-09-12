@@ -661,16 +661,82 @@ class MediaApiTests(StorageTestCase):
         async def allow(*_args, **_kwargs):
             return None
 
+        class _NoUsageResult:
+            def __init__(self, row=None):
+                self._row = row
+
+            def scalars(self):
+                outer = self
+
+                class _S:
+                    def first(self):
+                        return outer._row
+
+                return _S()
+
+            def scalar(self):
+                return 0
+
+        class _NoUsageDB:
+            """Register lookup finds no asset row; both usage counts are 0."""
+
+            async def execute(self, *_a, **_k):
+                return _NoUsageResult(None)
+
+            async def delete(self, *_a, **_k):
+                return None
+
         with patch.object(media_module, "require_admin_permission", allow):
             result = asyncio.run(
                 media_module.delete_media_object(
                     object_key="products/PF-A-1/second.png",
-                    db=AsyncMock(),
+                    db=_NoUsageDB(),
                     current_user=SimpleNamespace(id="u1", user_type="admin"),
                 )
             )
         self.assertTrue(result["ok"])
         self.assertFalse(self.provider.object_exists("products/PF-A-1/second.png"))
+        self.assertTrue(self.provider.object_exists("products/PF-A-1/primary.png"))
+
+    def test_21d_in_use_object_delete_is_refused_with_counts(self):
+        """Audit S-9: deletion only proceeds when NOTHING references the key."""
+        import asyncio
+
+        from app.api.v1 import media as media_module
+        from app.core.exceptions import ConflictException
+
+        asset_row = SimpleNamespace(id="asset-1")
+
+        class _InUseResult:
+            def scalars(self):
+                class _S:
+                    def first(self):
+                        return asset_row
+
+                return _S()
+
+            def scalar(self):
+                return 2  # two product media rows reference it
+
+        class _InUseDB:
+            async def execute(self, *_a, **_k):
+                return _InUseResult()
+
+        async def allow(*_args, **_kwargs):
+            return None
+
+        self.assertTrue(self.provider.object_exists("products/PF-A-1/primary.png"))
+        with patch.object(media_module, "require_admin_permission", allow):
+            with self.assertRaises(ConflictException) as ctx:
+                asyncio.run(
+                    media_module.delete_media_object(
+                        object_key="products/PF-A-1/primary.png",
+                        db=_InUseDB(),
+                        current_user=SimpleNamespace(id="u1", user_type="admin"),
+                    )
+                )
+        self.assertIn("in use", str(ctx.exception).lower())
+        # The object survives a refused delete.
         self.assertTrue(self.provider.object_exists("products/PF-A-1/primary.png"))
 
     def test_22_files_outside_the_media_root_cannot_be_read(self):

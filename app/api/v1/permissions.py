@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, require_admin_permission
 from app.models.auth.user import UserModel
 from app.models.rbac.permission import PermissionModel
 
@@ -39,6 +39,7 @@ async def list_permissions(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "roles.view")
     result = await db.execute(select(PermissionModel).order_by(PermissionModel.category, PermissionModel.code))
     permissions = result.scalars().all()
     return {
@@ -54,6 +55,7 @@ async def get_permission(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "roles.view")
     permission = (
         await db.execute(select(PermissionModel).where(PermissionModel.code == code))
     ).scalars().first()

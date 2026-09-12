@@ -82,6 +82,11 @@ class FakeResult:
     def scalars(self):
         return FakeScalars(self.values)
 
+    def all(self):
+        # Column-level grouped SELECTs (batched taxonomy counts) consume
+        # rows directly.
+        return list(self.values)
+
 
 class Phase1SecurityTests(unittest.IsolatedAsyncioTestCase):
     async def test_customer_cannot_submit_product_for_review(self):
@@ -140,6 +145,9 @@ class Phase1SecurityTests(unittest.IsolatedAsyncioTestCase):
             published_at=None,
         )
         db = AsyncMock()
+        # Collection membership reads are column-level SELECTs; answer them
+        # with an empty page (this product has no manual/rule collections).
+        db.execute = AsyncMock(return_value=FakeResult([]))
         service = ProductService(db)
         service._get_or_404 = AsyncMock(return_value=draft)
 

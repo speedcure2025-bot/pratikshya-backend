@@ -31,6 +31,7 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.services.catalog.recommendation_service import record_behavior_safely
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -106,7 +107,7 @@ class CartService:
         result = await self.db.execute(stmt)
         cart = result.scalars().first()
         if not cart:
-            cart = CartModel(customer_id=customer_id)
+            cart = CartModel(customer_id=customer_id, items=[])
             self.db.add(cart)
             await self.db.flush()
         return cart
@@ -442,6 +443,7 @@ class CartService:
         items, coupon_valid = await self._restore_cart(cart)
         response = await self._build_cart_response(cart, items, coupon_valid)
         await self._invalidate_cart_cache(customer_id)
+        await record_behavior_safely(self.db, customer_id, req.product_id, "CART_ADD")
         return response
 
     async def update_item(
@@ -481,6 +483,7 @@ class CartService:
         items, coupon_valid = await self._restore_cart(cart)
         response = await self._build_cart_response(cart, items, coupon_valid)
         await self._invalidate_cart_cache(customer_id)
+        await record_behavior_safely(self.db, customer_id, target.product_id, "CART_REMOVE" if quantity < 1 else "CART_ADD")
         return response
 
     async def remove_item(self, customer_id: str, line_id: str) -> CartResponse:
@@ -505,11 +508,13 @@ class CartService:
         items, coupon_valid = await self._restore_cart(cart)
         response = await self._build_cart_response(cart, items, coupon_valid)
         await self._invalidate_cart_cache(customer_id)
+        await record_behavior_safely(self.db, customer_id, target.product_id, "CART_REMOVE")
         return response
 
     async def clear_cart(self, customer_id: str) -> None:
         """DELETE /cart — remove all lines and the coupon."""
         cart = await self._get_or_create_cart(customer_id)
+        removed_ids = {item.product_id for item in cart.items}
         for item in list(cart.items):
             await self.db.delete(item)
         cart.coupon_code = None
@@ -517,6 +522,8 @@ class CartService:
         cart.coupon_lapsed = False
         await self.db.flush()
         await self._invalidate_cart_cache(customer_id)
+        for product_id in removed_ids:
+            await record_behavior_safely(self.db, customer_id, product_id, "CART_REMOVE")
 
     async def apply_coupon(
         self, customer_id: str, code: str

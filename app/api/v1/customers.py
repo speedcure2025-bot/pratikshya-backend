@@ -8,6 +8,7 @@ URL mapping  (API_CONTRACT.md → USERS):
   POST   /customers/me/sessions/revoke-others    → revoke_other_sessions
   GET    /admin/customers                         → admin_list_customers
   GET    /admin/customers/{customerId}            → admin_get_customer
+  POST   /admin/customers/{customerId}/status     → admin_update_customer_status
 """
 
 from typing import Optional
@@ -16,12 +17,13 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException
-from app.dependencies import get_current_customer, get_current_user, get_db, require_permission_for_user
+from app.dependencies import get_current_customer, get_current_user, get_db, require_permission_for_user, require_staff_permission
 from app.models.auth.user import UserModel
 from app.schemas.customer.address import AddressResponse
 from app.schemas.customer.customer import (
     AdminCustomerListResponse,
     AdminCustomerResponse,
+    CustomerStatusRequest,
     MeResponse,
     PreferencesResponse,
     PreferencesUpdate,
@@ -196,10 +198,15 @@ async def admin_list_customers(
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Permission check — admin or employee with customers.view
+    # Audit S-7: the directory is deliberately staff-scoped (Admin workspace
+    # AND delegated employees). What was missing was the CANONICAL guard —
+    # admins now face the same hardened `require_admin_permission` semantics
+    # every other admin read applies (role provisioned but unassigned = 403);
+    # employee tokens keep passing on their own `customers.view` grant, and
+    # both paths get the central ACCESS_DENIED diary entry on refusal.
     if current_user.user_type not in ("admin", "employee"):
-        raise ForbiddenException("customers.view permission required.")
-    await require_permission_for_user(current_user, db, "customers.view")
+        raise ForbiddenException("Staff authentication required.")
+    await require_staff_permission(current_user, db, "customers.view")
 
     service = CustomerService(db)
     customers, total = await service.list_customers(q=q, page=page, page_size=page_size)
@@ -215,7 +222,9 @@ async def admin_list_customers(
     response_model=AdminCustomerResponse,
     summary="[Admin] Get a single customer with full detail",
     description=(
-        "Authorization: `customers.view` permission required.  \n"
+        "Authorization: staff token (Admin workspace or an employee holding "
+        "`customers.view`); permission enforced through the shared capability "
+        "surface.  \n"
         "Returns customer profile + addresses[] + derived stats."
     ),
 )
@@ -225,8 +234,39 @@ async def admin_get_customer(
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.user_type not in ("admin", "employee"):
-        raise ForbiddenException("customers.view permission required.")
-    await require_permission_for_user(current_user, db, "customers.view")
+        raise ForbiddenException("Staff authentication required.")
+    # Same canonical guard as the list endpoint (see audit S-7 note there).
+    await require_staff_permission(current_user, db, "customers.view")
 
     service = CustomerService(db)
     return await service.get_customer_detail(customer_id)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Admin: POST /admin/customers/{customerId}/status
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/admin/customers/{customer_id}/status",
+    response_model=AdminCustomerResponse,
+    summary="[Admin] Set customer account status",
+    description=(
+        "Body: `{ status: ACTIVE | SUSPENDED | DEACTIVATED }`  \n"
+        "**SUSPENDED** and **DEACTIVATED** immediately block login on the next "
+        "request.  \n"
+        "Authorization: `customers.manage` permission required."
+    ),
+)
+async def admin_update_customer_status(
+    customer_id: str,
+    req: CustomerStatusRequest,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.user_type not in ("admin", "employee"):
+        raise ForbiddenException("Staff authentication required.")
+    await require_staff_permission(current_user, db, "customers.manage")
+
+    service = CustomerService(db)
+    user = await service.update_customer_status(customer_id, req.status)
+    return await service.get_customer_detail(user.id)

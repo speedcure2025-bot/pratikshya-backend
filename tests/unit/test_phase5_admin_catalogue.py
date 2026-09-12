@@ -43,6 +43,7 @@ from app.schemas.catalog.product import (
     ProductUpdateRequest,
 )
 from app.services.catalog.category_service import CategoryService
+from app.models.catalog.product import ProductModel
 from app.services.catalog.product_service import ProductService
 
 
@@ -176,6 +177,125 @@ class FakeResult:
     def scalar(self):
         return self.scalar_value
 
+    def all(self):
+        # Column-level SELECTs (collection membership reads) consume rows
+        # directly instead of through scalars().
+        return list(self.values)
+
+
+def _sql_order_rows(rows, stmt):
+    """
+    Simulate, for stub rows, the ORDER BY / LIMIT / OFFSET contract the
+    service now delegates to the database in ``list_admin_products``.
+
+    The consolidation moved admin-list filtering/sorting/pagination into
+    SQL. This fake honours the exact ORDER BY shapes the service emits so
+    the ORIGINAL behavioural assertions (newest/oldest ordering, page
+    slicing, page-beyond-range) keep proving the same contract instead of
+    being rewritten around the new implementation detail.
+    """
+    try:
+        clauses = [str(clause) for clause in stmt._order_by_clause]
+        order_text = " ".join(clauses).upper()
+    except Exception:
+        return rows
+    if not clauses:
+        return rows
+
+    identity = {"id": lambda row: str(getattr(row, "id", ""))}
+    keys = {
+        "created_at": lambda row: getattr(row, "created_at", None),
+        "updated_at": lambda row: getattr(row, "updated_at", None),
+        "price": lambda row: getattr(row, "price", None) or 0,
+    }
+
+    def sort_rows(keyfns):
+        decorated = [(tuple(fn(row) for fn in keyfns), position, row) for position, row in enumerate(rows)]
+        decorated.sort(key=lambda item: item[:2])
+        return [row for _, _, row in decorated]
+
+    if "LOWER(" in order_text and "NAME" in order_text:
+        rows = sort_rows([lambda row: str(getattr(row, "name", "") or "").lower(), identity["id"]])
+    elif "STATUS" in order_text:
+        rows = sort_rows([
+            lambda row: str(getattr(row, "status", "") or ""),
+            lambda row: str(getattr(row, "name", "") or "").lower(),
+            identity["id"],
+        ])
+    elif "CREATED_AT" in order_text:
+        descending = " DESC" in order_text
+        rows = sort_rows([keys["created_at"], identity["id"]])
+        if descending:
+            rows = list(reversed(rows))
+    elif "UPDATED_AT" in order_text:
+        descending = " DESC" in order_text
+        rows = sort_rows([keys["updated_at"], identity["id"]])
+        if descending:
+            rows = list(reversed(rows))
+    elif "PRICE" in order_text:
+        descending = " DESC" in order_text
+        rows = sort_rows([keys["price"], identity["id"]])
+        if descending:
+            rows = list(reversed(rows))
+
+    try:
+        limit_clause = getattr(stmt, "_limit_clause", None)
+        offset_clause = getattr(stmt, "_offset_clause", None)
+        limit = int(limit_clause.value) if limit_clause is not None else None
+        offset = int(offset_clause.value) if offset_clause is not None else 0
+        if offset:
+            rows = rows[offset:]
+        if limit is not None:
+            rows = rows[:limit]
+    except Exception:
+        pass
+    return rows
+
+
+
+# ---------------------------------------------------------------------------
+# Offers register SQL simulation (admin consolidation): GET /admin/offers runs
+# its tiles/count/page in SQL now, so the fake session mirrors those three
+# query shapes against the queued coupon stubs. The honesty assertions
+# (derived-status filter, full-set totals vs page) keep exercising the route.
+# ---------------------------------------------------------------------------
+
+def _coupon_display_status(coupon):
+    now = datetime.now(timezone.utc)
+    if not coupon.is_active:
+        return "ARCHIVED"
+    if coupon.starts_at and coupon.starts_at > now:
+        return "SCHEDULED"
+    if coupon.expires_at and coupon.expires_at < now:
+        return "EXPIRED"
+    return "ACTIVE"
+
+
+def _coupon_where_matches(whereclause, coupon):
+    """Evaluate the filter subset the offers register emits (ilike on
+    code/name, derived-status equality, and/or combinations)."""
+    from sqlalchemy import and_, or_
+    from sqlalchemy.sql.elements import BooleanClauseList, BinaryExpression
+    if whereclause is None:
+        return True
+    if isinstance(whereclause, BooleanClauseList):
+        results = [_coupon_where_matches(child, coupon) for child in whereclause.clauses]
+        if whereclause.operator is and_:
+            return all(results)
+        if whereclause.operator is or_:
+            return any(results)
+        return all(results)
+    if isinstance(whereclause, BinaryExpression):
+        left = whereclause.left
+        right_value = getattr(whereclause.right, "value", None)
+        if getattr(left, "name", None) in ("code", "name") and right_value:
+            term = str(right_value).strip("%").lower()
+            return term in str(getattr(coupon, left.name, "") or "").lower()
+        if type(left).__name__ == "Case" and right_value:
+            return _coupon_display_status(coupon) == right_value
+        return True
+    return True
+
 
 class FakeDB:
     """Queue-based fake AsyncSession; extra results reuse the last item."""
@@ -192,8 +312,85 @@ class FakeDB:
             return self.results.pop(0)
         return FakeResult([self.product] if self.product else [])
 
+    def _coupon_register_query(self, stmt):
+        """True when the statement targets the coupon table (tiles group-by,
+        filtered count or page select of the offers register)."""
+        if stmt is None:
+            return False
+        try:
+            tables = {getattr(t, "name", None) for t in stmt.get_final_froms()}
+        except Exception:
+            return False
+        return "commerce_coupon" in tables
+
+    def _simulate_coupon_register(self, stmt, coupons):
+        filtered = [c for c in coupons if _coupon_where_matches(getattr(stmt, "whereclause", None), c)]
+        descs = stmt.column_descriptions or []
+        if len(descs) == 1 and str(descs[0].get("name", "")).startswith("count"):
+            return len(filtered)
+        has_group = False
+        try:
+            has_group = bool(list(stmt._group_by_clause))
+        except Exception:
+            has_group = False
+        if has_group:
+            buckets = {}
+            for coupon in filtered:
+                buckets.setdefault(_coupon_display_status(coupon), []).append(coupon)
+            return [
+                SimpleNamespace(
+                    ds=status,
+                    n=len(rows),
+                    usage=sum(int(x.usage_count or 0) for x in rows),
+                )
+                for status, rows in buckets.items()
+            ]
+        ordered = sorted(
+            filtered,
+            key=lambda c: c.created_at or datetime(1970, 1, 1, tzinfo=timezone.utc),
+            reverse=True,
+        )
+        limit = stmt._limit_clause.value if stmt._limit_clause is not None else None
+        offset = stmt._offset_clause.value if stmt._offset_clause is not None else 0
+        end = None if limit is None else offset + limit
+        return ordered[offset:end]
+
     async def execute(self, *args, **kwargs):
-        return self._next()
+        stmt = args[0] if args else None
+        # Offers register queries are answered from the queued coupon stubs
+        # with the SQL semantics simulated; the queue is not consumed.
+        if self._coupon_register_query(stmt):
+            source = self.results[0].values if self.results else []
+            simulated = self._simulate_coupon_register(stmt, source)
+            if isinstance(simulated, int):
+                return FakeResult([], scalar_value=simulated)
+            return FakeResult(simulated)
+        result = self._next()
+        # SELECTs that carry ORDER BY get the SQL simulation applied so the
+        # queue-provided stub rows behave like a real database page.
+        # Only the admin PRODUCT list delegates ordering/paging to SQL; the
+        # offer/coupon surfaces still paginate in memory and must keep the
+        # queue order untouched.
+        selects_products = False
+        has_order_by = False
+        if stmt is not None:
+            try:
+                descs = stmt.column_descriptions or []
+                selects_products = any(d.get("entity") is ProductModel for d in descs)
+            except Exception:
+                selects_products = False
+            try:
+                has_order_by = bool(list(stmt._order_by_clause))
+            except Exception:
+                has_order_by = False
+        if result.values and selects_products and has_order_by:
+            try:
+                ordered = _sql_order_rows(result.values, stmt)
+                if ordered is not result.values:
+                    result.values = ordered
+            except Exception:
+                pass
+        return result
 
     async def flush(self):
         self.flushed += 1
@@ -644,12 +841,17 @@ def subcategory_stub(**kw):
 class CategoryAdminTests(unittest.IsolatedAsyncioTestCase):
     async def test_admin_list_includes_draft_and_archived_with_counts(self):
         rows = [category_stub(id="kidswear"), category_stub(id="draftcat", status="DRAFT")]
+        # Admin consolidation: counts arrive as ONE grouped query per list
+        # pass (was one COUNT per category row). Rows are (category, total,
+        # published); the pass runs twice — list_categories + admin totals.
+        grouped = [
+            ("kidswear", 15, 12),
+            ("draftcat", 2, 0),
+        ]
         db = FakeDB(results=[
             FakeResult(rows),
-            FakeResult([], scalar_value=12),   # published count kidswear
-            FakeResult([], scalar_value=0),    # published count draftcat
-            FakeResult([], scalar_value=15),   # total count kidswear
-            FakeResult([], scalar_value=2),    # total count draftcat
+            FakeResult(list(grouped)),
+            FakeResult(list(grouped)),
         ])
         service = CategoryService(db)
         items = await service.list_admin_categories(status_filter=None)
@@ -870,15 +1072,31 @@ class AdminRbacTests(unittest.IsolatedAsyncioTestCase):
                 await require_admin_permission(user, AsyncMock(), "products.manage")
         self.assertIn("products.manage", str(ctx.exception))
 
-    async def test_zero_role_admin_keeps_surface_access(self):
-        # Documented bootstrap-compat path: admins exist before the role
-        # directory is provisioned; surface isolation is enforced by
-        # get_current_admin, not here.
+    async def test_zero_role_admin_denied_when_roles_exist(self):
+        # S-4 (admin consolidation): once the RBAC directory HAS roles, an
+        # admin without any assignment gets NO unrestricted access.
+        from app.core.exceptions import ForbiddenException
         from app.dependencies import require_admin_permission
         user = SimpleNamespace(id="u")
+        db = AsyncMock()
+        db.execute.return_value.scalar_one = lambda: 3  # roles table provisioned
         with patch("app.dependencies.get_user_roles_and_permissions",
                    AsyncMock(return_value=([], []))):
-            await require_admin_permission(user, AsyncMock(), "offers.create")
+            with self.assertRaises(ForbiddenException):
+                await require_admin_permission(user, db, "offers.create")
+
+    async def test_zero_role_admin_keeps_bootstrap_access_on_empty_directory(self):
+        # Documented bootstrap-compat path: admins exist before the role
+        # directory is provisioned (roles table EMPTY). Surface isolation is
+        # still enforced by get_current_admin; this only unlocks permission
+        # checks so the portal can be provisioned at all.
+        from app.dependencies import require_admin_permission
+        user = SimpleNamespace(id="u")
+        db = AsyncMock()
+        db.execute.return_value.scalar_one = lambda: 0  # roles table empty
+        with patch("app.dependencies.get_user_roles_and_permissions",
+                   AsyncMock(return_value=([], []))):
+            await require_admin_permission(user, db, "offers.create")
 
     async def test_admin_routes_are_wired_to_permission_checks(self):
         expectations = {

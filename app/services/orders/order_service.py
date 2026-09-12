@@ -60,7 +60,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -1005,6 +1005,25 @@ class OrderService:
 
     # ── Admin: list orders ────────────────────────────────────────────────────
 
+    # Fulfillment-desk filters map onto real order statuses — the same
+    # mapping the admin order read model applies client-side.
+    FULFILLMENT_STATUS_GROUPS: Dict[str, tuple] = {
+        "PENDING": ("PENDING_PAYMENT", "PLACED", "ORDER_CONFIRMED", "CONFIRMED", "PAYMENT_CONFIRMED", "PROCESSING"),
+        "ALLOCATED": ("ALLOCATED",),
+        "PICKING": ("PICKING",),
+        "PACKED": ("PACKED",),
+        "READY_TO_DISPATCH": ("READY_TO_DISPATCH",),
+        "SHIPPED": ("SHIPPED",),
+        "OUT_FOR_DELIVERY": ("OUT_FOR_DELIVERY",),
+        "DELIVERED": ("DELIVERED",),
+        "CANCELLED": ("CANCELLED",),
+    }
+    VALUE_BANDS: Dict[str, tuple] = {
+        "low": (None, 4999),
+        "mid": (5000, 20000),
+        "high": (20001, None),
+    }
+
     async def admin_list_orders(
         self,
         status: Optional[str] = None,
@@ -1012,17 +1031,51 @@ class OrderService:
         q: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
+        payment_status: Optional[str] = None,
+        fulfillment: Optional[str] = None,
+        created_since: Optional[datetime] = None,
+        value_band: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """GET /admin/orders."""
+        """GET /admin/orders.
+
+        The desk's filters run server-side against real columns (admin
+        consolidation, HP-4): payment status, fulfillment stage (mapped to
+        order statuses), created-since window and order-value band. `q`
+        searches the order number OR the customer name/email/phone.
+        """
         conditions = []
         if status:
             conditions.append(OrderModel.status == status)
         if customer_id:
             conditions.append(OrderModel.customer_id == customer_id)
+        if payment_status:
+            conditions.append(OrderModel.payment_status == payment_status)
+        if fulfillment:
+            statuses = self.FULFILLMENT_STATUS_GROUPS.get(str(fulfillment).upper())
+            if statuses:
+                conditions.append(OrderModel.status.in_(statuses))
+        if created_since is not None:
+            conditions.append(OrderModel.created_at >= created_since)
+        if value_band:
+            low, high = self.VALUE_BANDS.get(value_band, (None, None))
+            if low is not None:
+                conditions.append(OrderModel.total >= low)
+            if high is not None:
+                conditions.append(OrderModel.total <= high)
         if q:
-            conditions.append(OrderModel.order_number.ilike(f"%{q}%"))
+            term = f"%{q.strip()}%"
+            conditions.append(
+                or_(
+                    OrderModel.order_number.ilike(term),
+                    UserModel.full_name.ilike(term),
+                    UserModel.email.ilike(term),
+                    UserModel.phone.ilike(term),
+                )
+            )
 
-        base_query = select(OrderModel)
+        base_query = select(OrderModel).outerjoin(
+            UserModel, UserModel.id == OrderModel.customer_id
+        )
         if conditions:
             base_query = base_query.where(*conditions)
 
@@ -1055,7 +1108,25 @@ class OrderService:
         for o in orders:
             o.customer = _customer_info_dict(o, admin_users.get(o.customer_id))  # type: ignore[attr-defined]
 
-        return {"orders": orders, "total": total, "page": page, "page_size": page_size}
+        # Desk tiles read ONE grouped status count over the WHOLE order book
+        # (unfiltered) — exact numbers, never "the first 100 rows".
+        status_rows = (
+            await self.db.execute(
+                select(
+                    OrderModel.status.label("status"),
+                    func.count(OrderModel.id).label("n"),
+                ).group_by(OrderModel.status)
+            )
+        ).all()
+        status_counts = {row.status: int(row.n) for row in status_rows}
+
+        return {
+            "orders": orders,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "status_counts": status_counts,
+        }
 
     # ── Admin: get single order ───────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import date, time
-from sqlalchemy import String, ForeignKey, Date, Time, Text
+from sqlalchemy import String, ForeignKey, Date, Time, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -14,6 +14,17 @@ class AttendanceModel(Base):
     """Daily attendance record for an employee."""
 
     __tablename__ = "employee_attendance"
+    __table_args__ = (
+        # One row per employee per day — the punch-duplicate guarantee.
+        # Added with the dedupe migration `s2a3b4c5d6e7`; the model declares
+        # the SAME index name so schema state and migrations never drift.
+        Index(
+            "uq_employee_attendance_employee_date",
+            "employee_id",
+            "attendance_date",
+            unique=True,
+        ),
+    )
 
     employee_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("employee_profiles.id", ondelete="CASCADE"), nullable=False, index=True

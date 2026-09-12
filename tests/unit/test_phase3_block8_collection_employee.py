@@ -46,6 +46,15 @@ class _Result:
     def scalars(self):
         return _Scalars(self.values)
 
+    def all(self):
+        # Row-tuple API (the collection service's published-product
+        # projection). Scalar fakes widen to projection-shaped rows so the
+        # column accessors find their defaults, not crashes.
+        return [
+            v if isinstance(v, tuple) else (v, None, None, {}, [], None)
+            for v in self.values
+        ]
+
 
 class _DB:
     def __init__(self, *results):

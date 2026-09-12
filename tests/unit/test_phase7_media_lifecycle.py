@@ -656,8 +656,10 @@ class MediaAuthorizationTests(Phase7LifecycleCase):
         denied_upload = self.upload(SEED_PRODUCT_ID, "denied.png", PNG_BYTES, "image/png")
         self.assertEqual(denied_upload.status_code, 403, denied_upload.text)
         self.assertEqual(self.asset_rows(), [])
-        # And the assets list is gated by the same permission.
-        self.assertEqual(self.client.get("/api/v1/media/assets").status_code, 403)
+        # Reads moved to the least-privilege media.view grant (admin
+        # consolidation): this viewer HAS media.view, so the register is
+        # listable — but writes stay denied.
+        self.assertEqual(self.client.get("/api/v1/media/assets").status_code, 200)
 
     def test_employee_token_cannot_reach_the_admin_media_surface(self):
         self.as_employee1()

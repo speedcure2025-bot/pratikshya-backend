@@ -1,9 +1,9 @@
 {
   "meta": {
-    "columns_total": 560,
-    "foreign_keys_total": 34,
+    "columns_total": 580,
+    "foreign_keys_total": 39,
     "generator": "backend/schema_audit/generate_expected_schema.py",
-    "indexes_total": 139,
+    "indexes_total": 148,
     "notes": [
       "Contract generated from backend SQLAlchemy models only; no external DB was accessed.",
       "Index matching in verify_schema.py is by column signature + uniqueness, not by index name, because Alembic/model naming conventions differ.",
@@ -69,6 +69,7 @@
       "pricing_tax_rate",
       "role_permissions",
       "roles",
+      "user_product_interactions",
       "user_roles",
       "user_sessions",
       "users",
@@ -77,8 +78,8 @@
       "variants_product_attribute",
       "variants_product_variant"
     ],
-    "tables_count": 64,
-    "unique_constraints_total": 5
+    "tables_count": 65,
+    "unique_constraints_total": 8
   },
   "schema": "pratikshya",
   "tables": {
@@ -6105,20 +6106,6 @@
         },
         {
           "columns": [
-            "department_id"
-          ],
-          "columns_signature": "department_id",
-          "name": null,
-          "ondelete": "SET NULL",
-          "onupdate": null,
-          "referred_columns": [
-            "employee_department.id"
-          ],
-          "referred_signature": "employee_department.id",
-          "referred_table": "employee_department"
-        },
-        {
-          "columns": [
             "section_id"
           ],
           "columns_signature": "section_id",
@@ -6130,6 +6117,20 @@
           ],
           "referred_signature": "employee_section.id",
           "referred_table": "employee_section"
+        },
+        {
+          "columns": [
+            "department_id"
+          ],
+          "columns_signature": "department_id",
+          "name": null,
+          "ondelete": "SET NULL",
+          "onupdate": null,
+          "referred_columns": [
+            "employee_department.id"
+          ],
+          "referred_signature": "employee_department.id",
+          "referred_table": "employee_department"
         }
       ],
       "indexes": [
@@ -6958,6 +6959,198 @@
     "media_marketing_media": {
       "columns": [
         {
+          "app_default": "'HOME_HERO'",
+          "index": true,
+          "kind": "varchar",
+          "length": 50,
+          "name": "placement",
+          "nullable": false,
+          "pg_datatype": "varchar(50)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=50)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 512,
+          "name": "object_key",
+          "nullable": false,
+          "pg_datatype": "varchar(512)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=512)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": true,
+          "kind": "varchar",
+          "length": 36,
+          "name": "media_asset_id",
+          "nullable": true,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 255,
+          "name": "title",
+          "nullable": true,
+          "pg_datatype": "varchar(255)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=255)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 500,
+          "name": "subtitle",
+          "nullable": true,
+          "pg_datatype": "varchar(500)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=500)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 100,
+          "name": "cta_label",
+          "nullable": true,
+          "pg_datatype": "varchar(100)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=100)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 500,
+          "name": "cta_href",
+          "nullable": true,
+          "pg_datatype": "varchar(500)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=500)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "text",
+          "length": null,
+          "name": "alt_text",
+          "nullable": true,
+          "pg_datatype": "text",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Text()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "0",
+          "index": false,
+          "kind": "integer",
+          "length": null,
+          "name": "sort_order",
+          "nullable": false,
+          "pg_datatype": "integer",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Integer()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "True",
+          "index": false,
+          "kind": "boolean",
+          "length": null,
+          "name": "is_active",
+          "nullable": false,
+          "pg_datatype": "boolean",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Boolean()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 36,
+          "name": "created_by",
+          "nullable": true,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 36,
+          "name": "updated_by",
+          "nullable": true,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
           "app_default": "<callable>",
           "index": true,
           "kind": "varchar",
@@ -7006,14 +7199,92 @@
           "unique": false
         }
       ],
-      "foreign_keys": [],
+      "foreign_keys": [
+        {
+          "columns": [
+            "created_by"
+          ],
+          "columns_signature": "created_by",
+          "name": null,
+          "ondelete": "SET NULL",
+          "onupdate": null,
+          "referred_columns": [
+            "users.id"
+          ],
+          "referred_signature": "users.id",
+          "referred_table": "users"
+        },
+        {
+          "columns": [
+            "media_asset_id"
+          ],
+          "columns_signature": "media_asset_id",
+          "name": null,
+          "ondelete": "SET NULL",
+          "onupdate": null,
+          "referred_columns": [
+            "media_media_asset.id"
+          ],
+          "referred_signature": "media_media_asset.id",
+          "referred_table": "media_media_asset"
+        },
+        {
+          "columns": [
+            "updated_by"
+          ],
+          "columns_signature": "updated_by",
+          "name": null,
+          "ondelete": "SET NULL",
+          "onupdate": null,
+          "referred_columns": [
+            "users.id"
+          ],
+          "referred_signature": "users.id",
+          "referred_table": "users"
+        }
+      ],
       "indexes": [
+        {
+          "columns": [
+            "placement",
+            "is_active",
+            "sort_order"
+          ],
+          "columns_signature": "placement|is_active|sort_order",
+          "name": "ix_marketing_media_placement_active_sort",
+          "unique": false
+        },
+        {
+          "columns": [
+            "placement",
+            "sort_order"
+          ],
+          "columns_signature": "placement|sort_order",
+          "name": "ix_marketing_media_placement_sort",
+          "unique": false
+        },
         {
           "columns": [
             "id"
           ],
           "columns_signature": "id",
           "name": "ix_pratikshya_media_marketing_media_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "media_asset_id"
+          ],
+          "columns_signature": "media_asset_id",
+          "name": "ix_pratikshya_media_marketing_media_media_asset_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "placement"
+          ],
+          "columns_signature": "placement",
+          "name": "ix_pratikshya_media_marketing_media_placement",
           "unique": false
         }
       ],
@@ -7022,7 +7293,16 @@
         "id"
       ],
       "schema": "pratikshya",
-      "unique_constraints": []
+      "unique_constraints": [
+        {
+          "columns": [
+            "placement",
+            "object_key"
+          ],
+          "columns_signature": "placement|object_key",
+          "name": "uq_marketing_media_placement_object_key"
+        }
+      ]
     },
     "media_media_asset": {
       "columns": [
@@ -7599,20 +7879,6 @@
       "foreign_keys": [
         {
           "columns": [
-            "product_id"
-          ],
-          "columns_signature": "product_id",
-          "name": null,
-          "ondelete": "CASCADE",
-          "onupdate": null,
-          "referred_columns": [
-            "catalog_product.id"
-          ],
-          "referred_signature": "catalog_product.id",
-          "referred_table": "catalog_product"
-        },
-        {
-          "columns": [
             "media_id"
           ],
           "columns_signature": "media_id",
@@ -7624,6 +7890,20 @@
           ],
           "referred_signature": "media_media_asset.id",
           "referred_table": "media_media_asset"
+        },
+        {
+          "columns": [
+            "product_id"
+          ],
+          "columns_signature": "product_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "catalog_product.id"
+          ],
+          "referred_signature": "catalog_product.id",
+          "referred_table": "catalog_product"
         }
       ],
       "indexes": [
@@ -10520,20 +10800,6 @@
       "foreign_keys": [
         {
           "columns": [
-            "permission_id"
-          ],
-          "columns_signature": "permission_id",
-          "name": null,
-          "ondelete": "CASCADE",
-          "onupdate": null,
-          "referred_columns": [
-            "permissions.id"
-          ],
-          "referred_signature": "permissions.id",
-          "referred_table": "permissions"
-        },
-        {
-          "columns": [
             "role_id"
           ],
           "columns_signature": "role_id",
@@ -10545,6 +10811,20 @@
           ],
           "referred_signature": "roles.id",
           "referred_table": "roles"
+        },
+        {
+          "columns": [
+            "permission_id"
+          ],
+          "columns_signature": "permission_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "permissions.id"
+          ],
+          "referred_signature": "permissions.id",
+          "referred_table": "permissions"
         }
       ],
       "indexes": [
@@ -10704,6 +10984,238 @@
       ],
       "schema": "pratikshya",
       "unique_constraints": []
+    },
+    "user_product_interactions": {
+      "columns": [
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 36,
+          "name": "customer_id",
+          "nullable": false,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 36,
+          "name": "product_id",
+          "nullable": false,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 20,
+          "name": "event_type",
+          "nullable": false,
+          "pg_datatype": "varchar(20)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=20)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 100,
+          "name": "dedup_key",
+          "nullable": false,
+          "pg_datatype": "varchar(100)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=100)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "bigint",
+          "length": null,
+          "name": "event_bucket",
+          "nullable": false,
+          "pg_datatype": "bigint",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "BigInteger()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "<callable>",
+          "index": true,
+          "kind": "varchar",
+          "length": 36,
+          "name": "id",
+          "nullable": false,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": true,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "<callable>",
+          "index": false,
+          "kind": "timestamp",
+          "length": null,
+          "name": "created_at",
+          "nullable": false,
+          "pg_datatype": "timestamp with time zone",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "DateTime(timezone=True)",
+          "timezone": true,
+          "unique": false
+        },
+        {
+          "app_default": "<callable>",
+          "index": false,
+          "kind": "timestamp",
+          "length": null,
+          "name": "updated_at",
+          "nullable": false,
+          "pg_datatype": "timestamp with time zone",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "DateTime(timezone=True)",
+          "timezone": true,
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "customer_id"
+          ],
+          "columns_signature": "customer_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "users.id"
+          ],
+          "referred_signature": "users.id",
+          "referred_table": "users"
+        },
+        {
+          "columns": [
+            "product_id"
+          ],
+          "columns_signature": "product_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": "CASCADE",
+          "referred_columns": [
+            "catalog_product.id"
+          ],
+          "referred_signature": "catalog_product.id",
+          "referred_table": "catalog_product"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "customer_id",
+            "created_at"
+          ],
+          "columns_signature": "customer_id|created_at",
+          "name": "ix_interaction_customer_recent",
+          "unique": false
+        },
+        {
+          "columns": [
+            "product_id",
+            "created_at"
+          ],
+          "columns_signature": "product_id|created_at",
+          "name": "ix_interaction_product_recent",
+          "unique": false
+        },
+        {
+          "columns": [
+            "created_at"
+          ],
+          "columns_signature": "created_at",
+          "name": "ix_interaction_retention",
+          "unique": false
+        },
+        {
+          "columns": [
+            "event_type",
+            "created_at"
+          ],
+          "columns_signature": "event_type|created_at",
+          "name": "ix_interaction_type_recent",
+          "unique": false
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "columns_signature": "id",
+          "name": "ix_pratikshya_user_product_interactions_id",
+          "unique": false
+        }
+      ],
+      "name": "user_product_interactions",
+      "primary_key": [
+        "id"
+      ],
+      "schema": "pratikshya",
+      "unique_constraints": [
+        {
+          "columns": [
+            "customer_id",
+            "product_id",
+            "event_type",
+            "event_bucket"
+          ],
+          "columns_signature": "customer_id|product_id|event_type|event_bucket",
+          "name": "uq_interaction_bucket"
+        },
+        {
+          "columns": [
+            "customer_id",
+            "dedup_key"
+          ],
+          "columns_signature": "customer_id|dedup_key",
+          "name": "uq_interaction_retry"
+        }
+      ]
     },
     "user_roles": {
       "columns": [

@@ -50,3 +50,6 @@ storage/*
 # Logs — keep the folder, ignore actual log files
 logs/*.log
 logs/*.log.*
+
+#test files
+tests/

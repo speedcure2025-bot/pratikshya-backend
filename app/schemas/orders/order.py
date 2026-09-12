@@ -195,6 +195,12 @@ class ReturnResponse(BaseModel):
     reviewed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    # Admin desk display fields (admin consolidation): the returns screens
+    # read the /admin/returns API directly, so the list/detail responses
+    # carry the owning order number and the customer display name resolved
+    # server-side with one bounded query per page (no 100-order snapshot).
+    order_number: Optional[str] = None
+    customer_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -278,6 +284,9 @@ class AdminOrderListResponse(BaseModel):
     total: int
     page: int = 1
     page_size: int = 20
+    # Grouped status counts over the WHOLE order book (admin consolidation):
+    # the desk tiles read these instead of counting the fetched page.
+    status_counts: Optional[Dict[str, int]] = None
 
 
 # ── Place order ───────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 class CustomerRegisterRequest(BaseModel):
@@ -108,6 +108,35 @@ class AdminLoginRequest(BaseModel):
         return self
 
 
+class StaffLoginRequest(BaseModel):
+    """
+    UNIFIED staff sign-in (one login experience for all four account levels).
+
+    Body: { identifier, password } where identifier may be:
+      • email (SUPER_ADMIN / ADMIN / employee accounts)
+      • phone  (legacy staff accounts registered by phone)
+      • employee code PF-<PREFIX>-##### (employee-domain accounts)
+
+    The backend determines the account level and the authorized workspace —
+    the frontend never picks the login surface itself.
+    """
+    identifier: str = Field(..., min_length=1, description="Email, phone, or employee ID")
+    # aliases for the existing per-surface login bodies (documented compat)
+    adminId: Optional[str] = None
+    employeeId: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: str = Field(..., min_length=1)
+    remember: Optional[bool] = True
+
+    @model_validator(mode="after")
+    def resolve_identifier(self) -> "StaffLoginRequest":
+        if not self.identifier:
+            self.identifier = self.adminId or self.employeeId or self.email or ""
+        if not self.identifier:
+            raise ValueError("Enter your email or employee ID.")
+        return self
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
@@ -149,6 +178,46 @@ class ResetPasswordRequest(BaseModel):
     def passwords_match(self) -> "ResetPasswordRequest":
         if self.confirmPassword and self.confirmPassword != self.newPassword:
             raise ValueError("Passwords do not match.")
+        return self
+
+
+class StaffProfileUpdateRequest(BaseModel):
+    """
+    PATCH /auth/me and PATCH /employee/me — staff self-service contact identity.
+
+    Restricted to fields the account holder may change: display name, phone,
+    email, and title/designation. Role, account level and employee code stay
+    administration-owned. Customers continue to use PATCH /customers/me.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    full_name: Optional[str] = Field(None, min_length=2, max_length=255)
+    firstName: Optional[str] = Field(None, min_length=1, max_length=60)
+    lastName: Optional[str] = Field(None, max_length=60)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=20)
+    title: Optional[str] = Field(None, max_length=100)
+    designation: Optional[str] = Field(None, max_length=100)
+
+    @field_validator("phone", "email", "name", "title", "designation", mode="before")
+    @classmethod
+    def _coerce_blank(cls, value):
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def resolve_aliases(self) -> "StaffProfileUpdateRequest":
+        if not self.full_name:
+            if self.name:
+                self.full_name = self.name.strip()
+            elif self.firstName or self.lastName:
+                combined = f"{(self.firstName or '').strip()} {(self.lastName or '').strip()}".strip()
+                self.full_name = combined or None
+        if not self.designation and self.title:
+            self.designation = self.title.strip()
         return self
 
 

@@ -82,6 +82,11 @@ class FakeResult:
     def scalar_one_or_none(self):
         return self.values[0] if self.values else None
 
+    def all(self):
+        # Column-level grouped SELECTs (the desk's status counts) consume
+        # rows directly.
+        return list(self.values)
+
 
 def make_db(results):
     """`execute` pops `results` in call order; the last result repeats."""
@@ -421,6 +426,8 @@ class AdminReadTests(unittest.IsolatedAsyncioTestCase):
             FakeResult([], scalar=1),   # count
             FakeResult([order]),        # page
             FakeResult([user]),         # customer lookup
+            # Desk status counts (one grouped query over the whole book)
+            FakeResult([SimpleNamespace(status="ORDER_CONFIRMED", n=1)]),
         ])
         result = await OrderService(db).admin_list_orders(page=1, page_size=20)
         self.assertEqual(result["orders"][0].customer["email"], "asha@example.com")

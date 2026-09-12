@@ -36,10 +36,13 @@ async def main() -> None:
     logger.info("Seeding database with predefined system roles and permissions...")
 
     async with AsyncSessionLocal() as db:
-        # 1. Seed Roles
+        # 1. Seed Roles — the four-level model's system roles (SUPER_ADMIN,
+        #    ADMIN) plus the canonical business-role catalogue. The legacy
+        #    admin-portal keys (MANAGER/SALES/…) are aliases in the catalog,
+        #    never separate rows: ONE authoritative vocabulary.
         role_map: dict[str, RoleModel] = {}
-        for role_enum in PredefinedRole:
-            role_name = role_enum.value
+        seed_role_names = [r.value for r in PredefinedRole] + ["ADMIN"]
+        for role_name in seed_role_names:
             stmt = select(RoleModel).where(RoleModel.name == role_name)
             res = await db.execute(stmt)
             role = res.scalars().first()
@@ -57,20 +60,32 @@ async def main() -> None:
 
         await db.commit()
 
-        # 2. Extract and Seed Permissions
+        # 2. Extract and Seed Permissions — legacy granular codes (kept as the
+        #    persisted implementation vocabulary) AND the canonical capability
+        #    codes from the consolidated model (additive; nothing deleted).
+        from app.core.rbac import ALL_CAPABILITIES, CAPABILITY_GROUPS
+
         all_perms: set[str] = set()
         for rdata in BUILT_IN_ROLES.values():
             for pcode in rdata.get("permissions", []):
                 all_perms.add(pcode)
 
+        capability_category = {
+            action["code"]: group["id"]
+            for group in CAPABILITY_GROUPS
+            for action in group["actions"]
+        }
+
         perm_map: dict[str, PermissionModel] = {}
-        for pcode in sorted(all_perms):
+        for pcode in sorted(all_perms | set(ALL_CAPABILITIES)):
             stmt = select(PermissionModel).where(PermissionModel.code == pcode)
             res = await db.execute(stmt)
             perm = res.scalars().first()
 
             if not perm:
-                category = pcode.split(".")[0] if "." in pcode else "system"
+                category = capability_category.get(pcode) or (
+                    pcode.split(".")[0] if "." in pcode else "system"
+                )
                 perm = PermissionModel(
                     code=pcode,
                     name=pcode.replace(".", " ").replace("_", " ").title(),

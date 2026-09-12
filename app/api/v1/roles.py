@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, require_admin_permission
 from app.models.auth.user import UserModel
 from app.models.rbac.permission import PermissionModel
 from app.models.rbac.role import RoleModel
@@ -42,6 +42,7 @@ async def list_roles(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "roles.view")
     result = await db.execute(select(RoleModel).order_by(RoleModel.name))
     roles = result.scalars().all()
     return {"items": [_role_dto(r) for r in roles], "total": len(roles)}
@@ -53,6 +54,7 @@ async def get_role(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "roles.view")
     role = (await db.execute(select(RoleModel).where(RoleModel.id == role_id))).scalars().first()
     if not role:
         raise NotFoundException(f"Role '{role_id}' not found.")

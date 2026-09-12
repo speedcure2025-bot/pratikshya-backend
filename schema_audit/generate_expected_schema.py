@@ -24,7 +24,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Boolean, Date, DateTime, Float, Integer, Numeric, String, Text, Time
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, Integer, Numeric, String, Text, Time
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql.sqltypes import JSON
 from sqlalchemy.sql.schema import Column, ForeignKeyConstraint, Index, UniqueConstraint
@@ -55,6 +55,9 @@ def _describe_type(column: Column) -> Dict[str, Any]:
         out["kind"] = "varchar"
         out["length"] = t.length
         out["pg_datatype"] = f"varchar({t.length})" if t.length else "varchar"
+    elif isinstance(t, BigInteger):
+        out["kind"] = "bigint"
+        out["pg_datatype"] = "bigint"
     elif isinstance(t, Integer):
         out["kind"] = "integer"
         out["pg_datatype"] = "integer"

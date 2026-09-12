@@ -51,12 +51,19 @@ class Step11BResponseContractTests(unittest.TestCase):
             assigned,
         )
 
-    def test_media_assets_preserves_empty_and_populated_lists_without_pagination(self):
+    def test_media_assets_preserves_empty_and_populated_lists(self):
+        """
+        Admin consolidation update: the durable registry read is DB-paginated
+        (it used to return every asset with no LIMIT). The envelope gained
+        ``total``/``page``/``pageSize`` with server defaults; the items list
+        itself still round-trips verbatim — empty stays empty and populated
+        payloads keep every field.
+        """
         empty = {"ok": True, "items": []}
-        self.assertEqual(
-            MediaAssetListResponse.model_validate(empty).model_dump(by_alias=True),
-            empty,
-        )
+        empty_dumped = MediaAssetListResponse.model_validate(empty).model_dump(by_alias=True)
+        self.assertEqual(empty_dumped["items"], [])
+        self.assertEqual(empty_dumped["total"], 0)
+        self.assertEqual(empty_dumped["page"], 1)
 
         populated = {
             "ok": True,
@@ -70,12 +77,10 @@ class Step11BResponseContractTests(unittest.TestCase):
                 }
             ],
         }
-        self.assertEqual(
-            MediaAssetListResponse.model_validate(populated).model_dump(by_alias=True),
-            populated,
-        )
-        self.assertNotIn("page", populated)
-        self.assertNotIn("pageSize", populated)
+        dumped = MediaAssetListResponse.model_validate(populated).model_dump(by_alias=True)
+        self.assertEqual(dumped["items"], populated["items"])
+        self.assertEqual(dumped["pageSize"], 50)
+        self.assertEqual(dumped["total"], 0)
 
     def test_taxonomy_metrics_preserves_empty_and_populated_status_counts(self):
         empty = {
@@ -158,7 +163,7 @@ class Step11BResponseContractTests(unittest.TestCase):
                 "get",
                 "200",
                 "MediaAssetListResponse",
-                {"200", "401", "403", "500"},
+                {"200", "401", "403", "422", "500"},
             ),
             "/api/v1/admin/taxonomy/metrics": (
                 "get",

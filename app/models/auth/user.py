@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, List, Optional
-from sqlalchemy import String, Boolean
+from sqlalchemy import JSON, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -47,6 +47,25 @@ class UserModel(Base):
         nullable=False, 
         default="customer"
         )                       # customer, employee, admin
+
+    account_level: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        comment="Staff hierarchy level: SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE; NULL for customers",
+    )
+
+    permission_mode: Mapped[Optional[str]] = mapped_column(
+        String(10),
+        nullable=True,
+        default="role",
+        comment="'role' = capability set comes from assigned roles; 'custom' = custom_permissions override",
+    )
+
+    custom_permissions: Mapped[Optional[list]] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Explicit grant list (canonical capability codes or legacy granular codes) when permission_mode='custom'",
+    )
 
     status: Mapped[str] = mapped_column(
         String(50), 

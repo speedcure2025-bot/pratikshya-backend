@@ -39,9 +39,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, Query, File, Form, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, StreamingResponse
 
@@ -519,12 +519,42 @@ async def register_media_object(
     "/assets",
     response_model=MediaAssetListResponse,
     summary="List registered media assets",
-    responses=canonical_error_responses(401, 403, 500),
+    responses=canonical_error_responses(401, 403, 422, 500),
 )
-async def list_media_assets(db: AsyncSession = Depends(get_db), current_user: UserModel = Depends(get_current_admin)):
-    await require_admin_permission(current_user, db, "media.upload")
-    rows = (await db.execute(select(MediaAssetModel).order_by(MediaAssetModel.created_at.desc()))).scalars().all()
-    return {"ok": True, "items": [{"id": r.id, "objectKey": r.object_key, "url": MediaService(db).object_url(r.object_key), "status": r.status, "mimeType": r.mime_type} for r in rows]}
+async def list_media_assets(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200, alias="pageSize"),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_admin),
+):
+    """
+    List registered media assets — DB-side paginated.
+
+    DB-load note (admin consolidation): the registry read previously had no
+    LIMIT, so every library mount returned every asset ever registered. The
+    read is now a bounded page with the full filtered count, newest first.
+    """
+    # Reads use the view permission (least privilege); uploads stay on
+    # media.upload and deletion on media.delete.
+    await require_admin_permission(current_user, db, "media.view")
+    total = (
+        await db.execute(select(func.count()).select_from(MediaAssetModel))
+    ).scalar() or 0
+    rows = (
+        await db.execute(
+            select(MediaAssetModel)
+            .order_by(MediaAssetModel.created_at.desc(), MediaAssetModel.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).scalars().all()
+    return {
+        "ok": True,
+        "items": [{"id": r.id, "objectKey": r.object_key, "url": MediaService(db).object_url(r.object_key), "status": r.status, "mimeType": r.mime_type} for r in rows],
+        "total": int(total),
+        "page": page,
+        "pageSize": page_size,
+    }
 
 
 @router.delete(
@@ -539,16 +569,49 @@ async def delete_media_object(
     """
     Delete exactly one explicitly named object.
 
-    There is no cascade and no garbage collection in this phase: an object is
-    only removed when an administrator names it. The original
-    `frontend/public/images` assets are outside the storage root and can
-    never be reached from here.
+    There is no cascade and no garbage collection: an object is only removed
+    when an administrator names it AND nothing references it (audit S-9).
+    Usage is checked against the asset register, product media rows and
+    marketing placements; a referenced object returns 409 with the counts so
+    the caller can un-link it first. When the asset row is unreferenced it is
+    removed with the object, so the register can never hold a dangling key.
+    The original `frontend/public/images` assets are outside the storage root
+    and can never be reached from here.
     """
     await require_admin_permission(current_user, db, "media.delete")
 
     media = _get_media_service(db)
     key = _safe_key(media, object_key)
+
+    from app.models.media.marketing_media import MarketingMediaModel
+
+    asset = (
+        await db.execute(select(MediaAssetModel).where(MediaAssetModel.object_key == key))
+    ).scalars().first()
+    product_refs = 0
+    if asset is not None:
+        product_refs = (
+            await db.execute(
+                select(func.count()).select_from(ProductMediaModel).where(ProductMediaModel.media_id == asset.id)
+            )
+        ).scalar() or 0
+    marketing_refs = (
+        await db.execute(
+            select(func.count()).select_from(MarketingMediaModel).where(MarketingMediaModel.object_key == key)
+        )
+    ).scalar() or 0
+    if product_refs or marketing_refs:
+        raise ConflictException(
+            "Media object is in use: "
+            f"{product_refs} product media reference(s), {marketing_refs} marketing placement(s). "
+            "Remove the references first."
+        )
+
     deleted = await run_in_threadpool(media.delete_object, key)
-    if not deleted:
+    if asset is not None:
+        # Unreferenced register row goes with the object (or cleans up an
+        # object that vanished from storage ahead of this call).
+        await db.delete(asset)
+    if not deleted and asset is None:
         raise NotFoundException("Media object not found.")
     return {"ok": True, "deleted": True, "key": key}

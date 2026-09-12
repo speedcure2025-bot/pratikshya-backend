@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, require_admin_permission
 from app.models.audit.activity_log import ActivityLogModel
 from app.models.auth.user import UserModel
 
@@ -56,6 +56,7 @@ async def list_logs(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "audit.view")
     stmt = select(ActivityLogModel)
     if action:
         stmt = stmt.where(ActivityLogModel.action == action)

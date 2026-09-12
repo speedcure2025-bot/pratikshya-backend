@@ -395,29 +395,51 @@ class ProductService:
         batch helper keeps product projections portable across the SQLite test
         harness and PostgreSQL by evaluating the existing JSONB arrays in
         Python rather than adding an association table or migration.
+
+        DB-load note (admin consolidation): the query reads ONLY the five
+        columns the membership evaluation needs (id, name, type, rule,
+        explicit_product_ids) instead of hydrating every full
+        ``catalog_collection`` row with its heavy content JSONB columns. A
+        single-product fast path reads just the two candidate sets (RULE_BASED
+        rules and MANUAL names) — see
+        ``_collection_membership_names_for_product``.
         """
         names: Dict[str, List[str]] = {str(product.id): [] for product in products}
         if not products:
             return names
 
         try:
-            result = await self.db.execute(select(CollectionModel))
-            collections = result.scalars().all()
+            result = await self.db.execute(
+                select(
+                    CollectionModel.id,
+                    CollectionModel.name,
+                    CollectionModel.type,
+                    CollectionModel.rule,
+                    CollectionModel.explicit_product_ids,
+                )
+            )
+            collections = result.all()
         except (SQLAlchemyError, AttributeError, TypeError):
             logger.warning("Collection membership read unavailable; using legacy labels.", exc_info=True)
             return names
 
-        for collection in collections:
-            collection_id = getattr(collection, "id", None)
-            collection_name = getattr(collection, "name", None)
+        def col(row, key):
+            try:
+                return getattr(row, key)
+            except AttributeError:
+                return row[key] if key in getattr(row, "_mapping", {}) else None
+
+        for row in collections:
+            collection_id = col(row, "id")
+            collection_name = col(row, "name")
             if not collection_id or not collection_name:
                 continue
             collection_id = str(collection_id)
             collection_name = str(collection_name)
-            collection_type = getattr(collection, "type", "MANUAL")
-            rule = getattr(collection, "rule", None) or {}
+            collection_type = col(row, "type") or "MANUAL"
+            rule = col(row, "rule") or {}
             explicit_ids = {
-                str(value) for value in (getattr(collection, "explicit_product_ids", None) or [])
+                str(value) for value in (col(row, "explicit_product_ids") or [])
             }
 
             for product in products:
@@ -453,6 +475,118 @@ class ProductService:
                     product_names = names[str(product.id)]
                     if collection_name not in product_names:
                         product_names.append(collection_name)
+        return names
+
+    async def _collection_membership_names_for_product(
+        self, product: ProductModel
+    ) -> List[str]:
+        """Single-product membership without a full collections-table scan.
+
+        GET /admin/products/{id} (and every other single-record projection)
+        previously paid for the same full-table read as a 25-product page.
+        This path fetches ONLY the rows that can actually match the one
+        product:
+
+          * RULE_BASED collections: (id, name, rule) — rules are evaluated
+            against this product alone;
+          * MANUAL collections: (id, name) — membership is decided from the
+            product's own legacy labels, so no rule/explicit-id payload is
+            read at all.
+
+        Legacy fallback semantics (and the failure behaviour when the table
+        is unavailable) match ``_collection_membership_names`` exactly.
+        """
+        try:
+            rule_rows = (
+                await self.db.execute(
+                    select(CollectionModel.id, CollectionModel.name, CollectionModel.rule).where(
+                        CollectionModel.type == "RULE_BASED"
+                    )
+                )
+            ).all()
+            manual_rows = (
+                await self.db.execute(
+                    select(CollectionModel.id, CollectionModel.name).where(
+                        CollectionModel.type != "RULE_BASED"
+                    )
+                )
+            ).all()
+        except (SQLAlchemyError, AttributeError, TypeError):
+            logger.warning("Collection membership read unavailable; using legacy labels.", exc_info=True)
+            return []
+
+        def col(row, key):
+            try:
+                return getattr(row, key)
+            except AttributeError:
+                return row[key] if key in getattr(row, "_mapping", {}) else None
+
+        legacy_labels = [str(v).lower() for v in (product.collections or [])]
+        legacy_scalar = str(product.collection or "").lower()
+
+        names: List[str] = []
+        for row in rule_rows:
+            if product.status != "PUBLISHED" or not product.published:
+                break
+            rule = col(row, "rule") or {}
+            # An empty/blank rule matches nothing — same semantics as the
+            # batch path (no flag/occasion/fabric key ⇒ never a member).
+            if not isinstance(rule, dict) or not (
+                rule.get("flag") or rule.get("occasion") or rule.get("fabricIncludes")
+            ):
+                continue
+            flag = rule.get("flag")
+            occasion = rule.get("occasion")
+            fabric_includes = rule.get("fabricIncludes")
+            if flag and not (product.flags or {}).get(flag):
+                continue
+            if occasion and occasion not in (product.occasion or []):
+                continue
+            if fabric_includes and fabric_includes.lower() not in (product.fabric or "").lower():
+                continue
+            name = str(col(row, "name"))
+            if name not in names:
+                names.append(name)
+
+        for row in manual_rows:
+            needle_name = str(col(row, "name")).lower()
+            needle_id = str(col(row, "id")).lower()
+            if (
+                needle_name in legacy_scalar
+                or needle_id in legacy_scalar
+                or needle_name in legacy_labels
+                or needle_id in legacy_labels
+            ):
+                display = str(col(row, "name"))
+                if display not in names:
+                    names.append(display)
+
+        # A MANUAL collection may also list this product explicitly. The
+        # explicit-id test cannot run as a portable JSON containment across
+        # SQLite/PostgreSQL, so it is resolved with the same bounded
+        # (id, name, explicit ids) candidate read the batch path uses.
+        try:
+            explicit_rows = (
+                await self.db.execute(
+                    select(
+                        CollectionModel.id,
+                        CollectionModel.name,
+                        CollectionModel.explicit_product_ids,
+                    ).where(
+                        CollectionModel.type == "MANUAL",
+                        CollectionModel.explicit_product_ids.isnot(None),
+                    )
+                )
+            ).all()
+        except (SQLAlchemyError, AttributeError, TypeError):
+            explicit_rows = []
+        for row in explicit_rows:
+            explicit_ids = {str(v) for v in (col(row, "explicit_product_ids") or [])}
+            if str(product.id) in explicit_ids:
+                display = str(col(row, "name"))
+                if display not in names:
+                    names.append(display)
+
         return names
 
     def _to_storefront(
@@ -536,21 +670,24 @@ class ProductService:
         """
         Single-record admin projection with the Phase 7 registered-media
         read model and collection-owned membership resolved.
+
+        Uses the single-product collection fast path — no full
+        collections-table scan per view/save.
         """
-        collection_names = await self._collection_membership_names([p])
+        collection_names = await self._collection_membership_names_for_product(p)
         return self._to_admin(
             p,
             await self._registered_media_items(p.id),
-            collection_names.get(str(p.id), []),
+            collection_names,
         )
 
     async def _to_employee_current(self, p: ProductModel) -> EmployeeProduct:
         """Single-record employee projection with authoritative reads resolved."""
-        collection_names = await self._collection_membership_names([p])
+        collection_names = await self._collection_membership_names_for_product(p)
         return self._to_employee(
             p,
             await self._registered_media_items(p.id),
-            collection_names.get(str(p.id), []),
+            collection_names,
         )
 
     def _to_admin(
@@ -1318,11 +1455,11 @@ class ProductService:
             raise NotFoundException(f"Product '{id_or_slug}' not found.")
 
         registered = await self._registered_media_items(p.id)
-        collection_names = await self._collection_membership_names([p])
+        collection_names = await self._collection_membership_names_for_product(p)
         dto = self._to_storefront(
             p,
             registered,
-            collection_names.get(str(p.id), []),
+            collection_names,
         )
         await cache.set_json(cache_key, dto.model_dump(), TTL_PRODUCT_DETAIL)
         return dto
@@ -1352,35 +1489,8 @@ class ProductService:
     async def get_recommendations(
         self, product_id: str, rec_type: str = "related"
     ) -> List[StorefrontProduct]:
-        """
-        GET /products/{id}/recommendations
-        Simple category-affinity for now — same visibility gate applies.
-        """
-        source = await self._get_or_404(product_id)
-        stmt = select(ProductModel).where(
-            ProductModel.status == "PUBLISHED",
-            ProductModel.published.is_(True),
-            ProductModel.id != source.id,
-        )
-        if rec_type in ("related",):
-            stmt = stmt.where(ProductModel.category == source.category)
-        result = await self.db.execute(stmt.limit(12))
-        products = result.scalars().all()
-        category_status_map, subcategory_status_map = await self._visibility_maps()
-        products = [
-            p for p in products
-            if self._taxonomy_visible(p, category_status_map, subcategory_status_map)
-        ]
-        registered_map = await self._registered_media_map([p.id for p in products])
-        collection_map = await self._collection_membership_names(products)
-        return [
-            self._to_storefront(
-                p,
-                registered_map.get(p.id),
-                collection_map.get(str(p.id), []),
-            )
-            for p in products
-        ]
+        from app.services.catalog.recommendation_service import RecommendationService
+        return await RecommendationService(self.db, visibility=self._taxonomy_visible).contextual(product_id, rec_type)
 
     # ── Recently viewed ───────────────────────────────────────────────────────
 
@@ -1440,6 +1550,19 @@ class ProductService:
 
     # ── Admin — list products ─────────────────────────────────────────────────
 
+    # Admin-sort vocabulary → SQL ORDER BY. Mirrors the former Python sort
+    # 1:1 (including null-safe keys and a deterministic id tiebreaker so
+    # pages never overlap or skip under pagination).
+    _ADMIN_SORT_EXPRESSIONS = {
+        "newest":     lambda: [ProductModel.created_at.desc().nullslast(), ProductModel.id.desc()],
+        "oldest":     lambda: [ProductModel.created_at.asc().nullsfirst(), ProductModel.id.asc()],
+        "name":       lambda: [func.lower(ProductModel.name).asc(), ProductModel.id.asc()],
+        "price-asc":  lambda: [func.coalesce(ProductModel.price, 0).asc(), ProductModel.id.asc()],
+        "price-desc": lambda: [func.coalesce(ProductModel.price, 0).desc(), ProductModel.id.asc()],
+        "status":     lambda: [func.coalesce(ProductModel.status, "").asc(), func.lower(ProductModel.name).asc(), ProductModel.id.asc()],
+        "updated":    lambda: [ProductModel.updated_at.desc().nullslast(), ProductModel.id.desc()],
+    }
+
     async def list_admin_products(self, query: AdminProductListQuery) -> Dict[str, Any]:
         """
         GET /admin/products — server-authoritative admin catalogue list.
@@ -1450,6 +1573,15 @@ class ProductService:
         the response and `total` reports the FULL filtered count (never just
         the page), so the desk can page honestly instead of treating a
         fetched subset as the whole catalogue.
+
+        DB-load note (admin consolidation): filtering, sorting, LIMIT and
+        OFFSET all happen in the DATABASE. Only the requested page of rows is
+        hydrated — the previous implementation loaded the ENTIRE filtered
+        catalogue (every JSONB-heavy row) plus a full collections-table scan
+        and only then sorted/sliced in Python — and the registered-media /
+        collection-membership resolution runs for the page rows only.
+        Filters, sorts, lifecycle semantics and the response contract are
+        unchanged.
         """
         stmt = select(ProductModel)
         if query.status:
@@ -1479,7 +1611,16 @@ class ProductService:
         )
         total = count_result.scalar() or 0
 
-        result = await self.db.execute(stmt)
+        sort = query.sort if query.sort in ADMIN_SORTS else "newest"
+        order_by = self._ADMIN_SORT_EXPRESSIONS.get(sort, self._ADMIN_SORT_EXPRESSIONS["newest"])()
+
+        page = max(1, query.page)
+        page_size = max(1, query.page_size)
+        offset = (page - 1) * page_size
+
+        result = await self.db.execute(
+            stmt.order_by(*order_by).offset(offset).limit(page_size)
+        )
         products = result.scalars().all()
         registered_map = await self._registered_media_map([p.id for p in products])
         collection_map = await self._collection_membership_names(products)
@@ -1492,30 +1633,9 @@ class ProductService:
             for p in products
         ]
 
-        sort = query.sort if query.sort in ADMIN_SORTS else "newest"
-        if sort == "newest":
-            items.sort(key=lambda p: p.created_at or "", reverse=True)
-        elif sort == "oldest":
-            items.sort(key=lambda p: p.created_at or "")
-        elif sort == "name":
-            items.sort(key=lambda p: (p.name or "").lower())
-        elif sort == "price-asc":
-            items.sort(key=lambda p: p.price or 0)
-        elif sort == "price-desc":
-            items.sort(key=lambda p: p.price or 0, reverse=True)
-        elif sort == "status":
-            items.sort(key=lambda p: (p.status or "", (p.name or "").lower()))
-        elif sort == "updated":
-            items.sort(key=lambda p: p.updated_at or "", reverse=True)
-
-        page = max(1, query.page)
-        page_size = max(1, query.page_size)
-        offset = (page - 1) * page_size
-        page_items = items[offset : offset + page_size]
-
         return {
             "ok": True,
-            "items": page_items,
+            "items": items,
             "total": total,
             "page": page,
             "page_size": page_size,
@@ -2484,30 +2604,50 @@ class ProductService:
     # ── Metrics ───────────────────────────────────────────────────────────────
 
     async def get_metrics(self) -> CatalogMetricsResponse:
-        result = await self.db.execute(select(ProductModel.status))
-        statuses = [row[0] for row in result]
-        result2 = await self.db.execute(
-            select(ProductModel.review_flags).where(ProductModel.status != "ARCHIVED")
-        )
+        """
+        Catalogue metrics tiles.
+
+        DB-load note (admin consolidation): the previous implementation ran
+        THREE queries including two separate full-column scans (one for every
+        status, one for every non-archived review_flags array) and counted in
+        Python. One status/flags scan now feeds the status histogram AND the
+        blocked count; the unassigned figure keeps its own indexed count.
+        Metric definitions are unchanged.
+        """
         blocking_flags = set(REVIEW_FLAG_BLOCKING)
-        blocked = sum(
-            1 for (flags,) in result2
-            if flags and set(flags) & blocking_flags
-        )
-        result3 = await self.db.execute(
-            select(func.count()).where(
-                ProductModel.assigned_employee_id.is_(None),
-                ProductModel.status.in_(["DRAFT", "PENDING_REVIEW"]),
+        rows = (
+            await self.db.execute(select(ProductModel.status, ProductModel.review_flags))
+        ).all()
+        total = 0
+        draft = pending = published = archived = blocked = 0
+        for status_value, flags in rows:
+            total += 1
+            if status_value == "DRAFT":
+                draft += 1
+            elif status_value == "PENDING_REVIEW":
+                pending += 1
+            elif status_value == "PUBLISHED":
+                published += 1
+            elif status_value == "ARCHIVED":
+                archived += 1
+            if status_value != "ARCHIVED" and flags and set(flags) & blocking_flags:
+                blocked += 1
+
+        unassigned = (
+            await self.db.execute(
+                select(func.count()).where(
+                    ProductModel.assigned_employee_id.is_(None),
+                    ProductModel.status.in_(["DRAFT", "PENDING_REVIEW"]),
+                )
             )
-        )
-        unassigned = result3.scalar() or 0
+        ).scalar() or 0
 
         return CatalogMetricsResponse(
-            total=len(statuses),
-            draft=statuses.count("DRAFT"),
-            pendingReview=statuses.count("PENDING_REVIEW"),
-            published=statuses.count("PUBLISHED"),
-            archived=statuses.count("ARCHIVED"),
+            total=total,
+            draft=draft,
+            pendingReview=pending,
+            published=published,
+            archived=archived,
             unassigned=unassigned,
             blocked=blocked,
         )

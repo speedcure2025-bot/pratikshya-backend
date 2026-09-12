@@ -329,6 +329,35 @@ class CustomerService:
         return result, total
 
     # ------------------------------------------------------------------
+    # Admin: POST /admin/customers/{customerId}/status
+    # ------------------------------------------------------------------
+
+    async def update_customer_status(self, customer_id: str, new_status: str) -> UserModel:
+        """Set a customer account to ACTIVE, SUSPENDED, or DEACTIVATED."""
+        from app.core.exceptions import BusinessLogicException
+
+        allowed = {"ACTIVE", "SUSPENDED", "DEACTIVATED"}
+        if new_status not in allowed:
+            raise BusinessLogicException(
+                "Invalid status. Must be one of: ACTIVE, SUSPENDED, DEACTIVATED"
+            )
+
+        res = await self.db.execute(
+            select(UserModel).where(
+                UserModel.id == customer_id,
+                UserModel.user_type == "customer",
+            )
+        )
+        user = res.scalars().first()
+        if not user:
+            raise NotFoundException("Customer not found.")
+
+        user.status = new_status
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    # ------------------------------------------------------------------
     # Admin: GET /admin/customers/{customerId}
     # ------------------------------------------------------------------
 

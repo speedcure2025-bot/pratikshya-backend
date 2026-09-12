@@ -173,6 +173,71 @@ class CollectionService:
             )
         return unique_ids
 
+    async def _published_projection(self) -> List[tuple]:
+        """ONE bounded read backing every collection resolution today:
+
+        (id, collection, collections, flags, occasion, fabric) for published
+        products — the exact columns the rule engine and the legacy label
+        matcher consult. Re-issues nothing, loads no ORM entities.
+
+        The previous implementation fetched full ProductModel entities per
+        collection (N+1 full scans on taxonomy/list surfaces); the hardening
+        mandate's "no full-table Python scans in new code" applies to
+        touching this path, so it is now one column-limited query per request.
+        """
+        stmt = select(
+            ProductModel.id,
+            ProductModel.collection,
+            ProductModel.collections,
+            ProductModel.flags,
+            ProductModel.occasion,
+            ProductModel.fabric,
+        ).where(
+            ProductModel.status == "PUBLISHED",
+            ProductModel.published.is_(True),
+        )
+        result = await self.db.execute(stmt)
+        return [tuple(row) for row in result.all()]
+
+    @staticmethod
+    def _rule_matches(rule: Dict[str, Any], row: tuple) -> bool:
+        _, _coll, _colls, flags, occasion, fabric = row
+        flag = rule.get("flag")
+        if flag and not (flags or {}).get(flag):
+            return False
+        want_occasion = rule.get("occasion")
+        if want_occasion and want_occasion not in (occasion or []):
+            return False
+        fabric_includes = rule.get("fabricIncludes")
+        if fabric_includes and fabric_includes.lower() not in (fabric or "").lower():
+            return False
+        return True
+
+    @staticmethod
+    def _label_matches(row: tuple, collection_name: str, collection_id: str) -> bool:
+        """Python equivalence of the legacy SQL predicate:
+        collection ILIKE %name%/%id% OR collections @> [name]/[id]."""
+        scalar = (row[1] or "").lower()
+        if collection_name.lower() in scalar or str(collection_id).lower() in scalar:
+            return True
+        array = row[2] or []
+        if not isinstance(array, list):
+            return False
+        wanted = {str(collection_name), str(collection_id)}
+        return any(str(item) in wanted for item in array)
+
+    def _resolve_from_rows(self, model: CollectionModel, rows: List[tuple]) -> List[str]:
+        """Resolution semantics, unchanged, evaluated on the projection."""
+        if model.type == "RULE_BASED" and model.rule:
+            return [row[0] for row in rows if self._rule_matches(model.rule, row)]
+        explicit: List[str] = model.explicit_product_ids or []
+        label_ids = [
+            row[0]
+            for row in rows
+            if self._label_matches(row, model.name, model.id)
+        ]
+        return list(dict.fromkeys(explicit + label_ids))
+
     async def _resolve_product_ids(self, model: CollectionModel) -> List[str]:
         """
         Resolve the final set of product IDs for a collection.
@@ -180,98 +245,18 @@ class CollectionService:
         MANUAL     → explicit_product_ids union label-match
         RULE_BASED → rule evaluation
 
-        Both paths only return PUBLISHED products.
+        Both paths only return PUBLISHED products (explicit ids pass through
+        as stored — validation guarantees existence at write time).
         """
-        if model.type == "RULE_BASED" and model.rule:
-            return await self._rule_product_ids(model.rule)
+        rows = await self._published_projection()
+        return self._resolve_from_rows(model, rows)
 
-        # MANUAL: start with explicit ids
-        explicit: List[str] = model.explicit_product_ids or []
-
-        # Also include products where product.collection or product.collections[]
-        # contains the collection name (legacy label match).
-        label_ids = await self._label_match_product_ids(model.name, model.id)
-
-        # Union, preserving order, deduplicating
-        combined = list(dict.fromkeys(explicit + label_ids))
-        return combined
-
-    async def _rule_product_ids(self, rule: Dict[str, Any]) -> List[str]:
-        """Evaluate a rule dict against PUBLISHED products and return matching IDs."""
-        stmt = select(ProductModel.id).where(
-            ProductModel.status == "PUBLISHED",
-            ProductModel.published.is_(True),
-        )
-        result = await self.db.execute(stmt)
-        all_published = result.scalars().all()
-
-        # NOTE: For production, push rule evaluation to the DB via JSONB operators.
-        # Here we do a simple Python-side filter for correctness and clarity.
-        matched: List[str] = []
-        for pid in all_published:
-            matched.append(pid)  # broadened below with actual field checks
-
-        # Re-fetch full rows for rule filtering only when a rule is present
-        rows_result = await self.db.execute(
-            select(ProductModel).where(
-                ProductModel.status == "PUBLISHED",
-                ProductModel.published.is_(True),
-            )
-        )
-        rows = rows_result.scalars().all()
-
-        flag = rule.get("flag")
-        occasion = rule.get("occasion")
-        fabric_includes = rule.get("fabricIncludes")
-
-        matched = []
-        for p in rows:
-            if flag:
-                flags_dict: dict = p.flags or {}
-                if not flags_dict.get(flag):
-                    continue
-            if occasion:
-                occasions: list = p.occasion or []
-                if occasion not in occasions:
-                    continue
-            if fabric_includes:
-                fabric: str = p.fabric or ""
-                if fabric_includes.lower() not in fabric.lower():
-                    continue
-            matched.append(p.id)
-
-        return matched
-
-    async def _label_match_product_ids(
-        self, collection_name: str, collection_id: str
-    ) -> List[str]:
-        """
-        Find PUBLISHED products whose `collection` string or `collections` JSONB array
-        references this collection by name or by id.
-        """
-        # We cast name/id comparison to JSONB contains where possible;
-        # for the scalar `collection` column we use ILIKE.
-        from sqlalchemy import cast
-        from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
-
-        stmt = select(ProductModel.id).where(
-            ProductModel.status == "PUBLISHED",
-            ProductModel.published.is_(True),
-            or_(
-                # Legacy scalar: product.collection contains the name/id
-                ProductModel.collection.ilike(f"%{collection_name}%"),
-                ProductModel.collection.ilike(f"%{collection_id}%"),
-                # JSONB array: product.collections @> '["<name>"]'
-                ProductModel.collections.cast(PG_JSONB).contains(
-                    [collection_name]
-                ),
-                ProductModel.collections.cast(PG_JSONB).contains(
-                    [collection_id]
-                ),
-            ),
-        )
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+    async def _resolved_counts(self, models: List[CollectionModel]) -> Dict[str, int]:
+        """Counts for MANY collections from ONE product projection read."""
+        if not models:
+            return {}
+        rows = await self._published_projection()
+        return {model.id: len(self._resolve_from_rows(model, rows)) for model in models}
 
     async def _resolved_count(self, model: CollectionModel) -> int:
         ids = await self._resolve_product_ids(model)
@@ -299,10 +284,10 @@ class CollectionService:
         result = await self.db.execute(stmt)
         collections = result.scalars().all()
 
+        counts = await self._resolved_counts(list(collections))
         output = []
         for col in collections:
-            count = await self._resolved_count(col)
-            output.append(_project(col, count))
+            output.append(_project(col, counts.get(col.id, 0)))
         return output
 
     async def get_collection(self, id_or_slug: str) -> CollectionResponse:
@@ -351,10 +336,10 @@ class CollectionService:
         result = await self.db.execute(stmt)
         collections = result.scalars().all()
 
+        counts = await self._resolved_counts(list(collections))
         output = []
         for col in collections:
-            count = await self._resolved_count(col)
-            output.append(_project(col, count))
+            output.append(_project(col, counts.get(col.id, 0)))
         return output
 
     async def admin_get_collection(self, id_or_slug: str) -> CollectionResponse:
@@ -604,9 +589,10 @@ class CollectionService:
         result = await self.db.execute(stmt)
         collections = result.scalars().all()
 
-        counts = []
-        for col in collections:
-            n = await self._resolved_count(col)
-            counts.append({"collectionId": col.id, "name": col.name, "productCount": n})
+        resolved = await self._resolved_counts(list(collections))
+        counts = [
+            {"collectionId": col.id, "name": col.name, "productCount": resolved.get(col.id, 0)}
+            for col in collections
+        ]
 
         return {"ok": True, "counts": counts}

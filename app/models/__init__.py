@@ -99,3 +99,4 @@ from app.models.chatbot.knowledge_chunk import KnowledgeChunkModel         # noq
 from app.models.chatbot.conversation import ConversationModel              # noqa: F401
 from app.models.chatbot.message import MessageModel                        # noqa: F401
 from app.models.chatbot.chat_retrieval import ChatRetrievalModel           # noqa: F401
+from app.models.customer.product_interaction import UserProductInteractionModel  # noqa: F401

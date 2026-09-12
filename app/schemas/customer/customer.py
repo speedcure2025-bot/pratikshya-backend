@@ -126,3 +126,8 @@ class AdminCustomerListResponse(BaseModel):
     ok: bool = True
     customers: List[AdminCustomerResponse]
     total: int
+
+
+class CustomerStatusRequest(BaseModel):
+    """Body for POST /admin/customers/{id}/status."""
+    status: str = Field(..., description="ACTIVE | SUSPENDED | DEACTIVATED")

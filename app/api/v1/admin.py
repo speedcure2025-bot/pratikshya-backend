@@ -20,6 +20,13 @@ URL mapping (API_CONTRACT.md § ADMIN → implementation):
   GET    /admin/roles                     ← list 8 built-in roles
   GET    /admin/roles/{roleId}            ← single role with default permissions
 
+  Dashboard
+  ─────────────────────────────────────────────────────────────────────────────
+  GET    /admin/dashboard/summary         ← consolidated dashboard aggregates
+                                          (same payload as the analytics
+                                          implementation; this is the path
+                                          the Admin portal actually calls)
+
 Notes:
   - Settings are deep-merged against SETTINGS_DEFAULTS on every read.
   - Unknown section names return { error: "Unknown settings section" } per spec.
@@ -28,9 +35,9 @@ Notes:
 """
 
 import copy
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,130 +54,13 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/admin", tags=["Admin Business Config"])
 
 
-# ---------------------------------------------------------------------------
-# SETTINGS_DEFAULTS — mirrors settingsRepository defaults on the frontend
-# ---------------------------------------------------------------------------
-
-KNOWN_SECTIONS = {
-    "business", "store", "locations", "hours", "attendance", "holidays",
-    "tax", "shipping", "payments", "orders", "returns", "inventory",
-    "employees", "notifications", "customer", "offers", "media",
-}
-
-SETTINGS_DEFAULTS: Dict[str, Any] = {
-    "business": {
-        "name": "Pratikshya Fashon",
-        "email": "",
-        "phone": "",
-        "gst": "",
-        "address": "",
-    },
-    "store": {
-        "currency": "INR",
-        "timezone": "Asia/Kolkata",
-        "locale": "en-IN",
-    },
-    "locations": {},
-    "hours": {
-        "open": "09:00",
-        "close": "21:00",
-        "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    },
-    "attendance": {
-        "startTime": "09:30",
-        "endTime": "18:30",
-        "lateThresholdMinutes": 10,
-        "minimumHalfDayMinutes": 240,
-        "fullDayMinutes": 540,
-    },
-    "holidays": {"list": []},
-    "tax": {
-        "mode": "INCLUSIVE",
-        "defaultRate": 0,
-    },
-    "shipping": {
-        "freeShippingThreshold": 5000,
-        "flatShippingFee": 99,
-        "expressFee": 199,
-        "codFee": 49,
-    },
-    "payments": {
-        "methods": ["upi", "card", "netbanking", "cod"],
-        "refundMethod": "Original payment method",
-        "refundSla": "5-7 business days",
-        "partialRefundEnabled": True,
-    },
-    "orders": {
-        "autoConfirm": True,
-        "cancellableStatuses": [
-            "PENDING_PAYMENT", "PLACED", "PAYMENT_CONFIRMED",
-            "ORDER_CONFIRMED", "CONFIRMED", "PROCESSING", "ALLOCATED", "PICKING",
-        ],
-    },
-    "returns": {
-        "returnWindowDays": 7,
-        "returnMethods": ["HOME_PICKUP", "STORE_DROP"],
-    },
-    "inventory": {
-        "lowStockThreshold": 5,
-        "trackStock": True,
-    },
-    "employees": {
-        "minimumPasswordLength": 8,
-        "requireUppercase": True,
-        "requireLowercase": True,
-        "requireNumber": True,
-        "requireSpecialCharacter": False,
-        "passwordExpiryDays": 30,
-    },
-    "notifications": {
-        "order": ["IN_APP"],
-        "returns": ["IN_APP"],
-        "employee": ["IN_APP"],
-        "lowStock": ["IN_APP"],
-        "offers": ["IN_APP"],
-        "marketing": [],
-    },
-    "customer": {
-        "allowGuestOrders": True,
-        "autoLoyaltyPoints": True,
-    },
-    "offers": {
-        "defaultDurationDays": 7,
-        "maximumCouponDiscount": 10000,
-        "defaultCustomerUsageLimit": 1,
-        "allowStacking": False,
-    },
-    "media": {
-        "maxImageSizeMb": 10,
-        "maxVideoSizeMb": 100,
-        # DERIVED from the single house image policy the upload validator and
-        # the migration tool enforce (settings.ALLOWED_IMAGE_TYPES mapped
-        # through app.storage.signatures) — never a second hand-maintained
-        # list. This keeps the settings desk from advertising a format the
-        # backend would reject (or omitting one it accepts): .avif and .webp
-        # are part of the policy because the real product asset library is
-        # AVIF-first (228 of the 238 shipped assets carry a .avif name).
-        "allowedImageTypes": [ext.lstrip(".") for ext in allowed_image_extensions()],
-        "allowedVideoTypes": ["mp4", "webm"],
-    },
-}
-
+# Settings catalogue: ONE source for sections + defaults (shared with the
+# workforce services — see app/core/settings_catalog.py; extracted 2026-09 so
+# punch rules can never drift from what the Admin settings surface serves).
+from app.core.settings_catalog import KNOWN_SECTIONS, SETTINGS_DEFAULTS, merge_defaults
 
 def _merge_defaults(section: str, stored: dict) -> dict:
-    """Deep-merge stored values on top of defaults."""
-    defaults = copy.deepcopy(SETTINGS_DEFAULTS.get(section, {}))
-    if stored:
-        def _deep_merge(base: dict, override: dict) -> dict:
-            result = dict(base)
-            for k, v in override.items():
-                if isinstance(v, dict) and isinstance(result.get(k), dict):
-                    result[k] = _deep_merge(result[k], v)
-                else:
-                    result[k] = v
-            return result
-        return _deep_merge(defaults, stored)
-    return defaults
+    return merge_defaults(section, stored)
 
 
 # ---------------------------------------------------------------------------
@@ -183,75 +73,17 @@ class SettingsPatchRequest(BaseModel):
 
 # ---------------------------------------------------------------------------
 # STATIC ROLES (mirrors roles-permissions.json)
+#
+# CONSOLIDATION (2026-09): the catalog moved to `app.core.rbac` — the single
+# canonical role vocabulary shared by the RBAC fallback, the auth service and
+# the seed script. Business roles are keyed by their persisted canonical
+# names (STORE_MANAGER, SALES_EXECUTIVE, …); the former Admin-portal keys
+# (MANAGER, SALES, INVENTORY, WAREHOUSE, CS, STYLIST) remain as alias entries
+# pointing at the same definitions. Re-exported here so every existing
+# `from app.api.v1.admin import BUILT_IN_ROLES` import site keeps working.
 # ---------------------------------------------------------------------------
 
-BUILT_IN_ROLES = {
-    "SUPER_ADMIN": {
-        "id": "SUPER_ADMIN",
-        "name": "Super Admin",
-        "description": "Full unrestricted access to all features and settings.",
-        "permissions": ["*"],
-    },
-    "ADMIN": {
-        "id": "ADMIN",
-        "name": "Admin",
-        "description": "Full operational access excluding some destructive actions.",
-        "permissions": [
-            "products.view", "products.manage", "categories.view", "categories.create", "categories.edit", "categories.archive",
-            "collections.view", "collections.create", "collections.edit", "collections.assign", "collections.archive",
-            "media.view", "media.upload", "media.assign", "media.delete",
-            "orders.view", "orders.fulfill", "orders.pick", "orders.pack", "orders.dispatch", "orders.cancel", "orders.manage",
-            "returns.view", "returns.manage",
-            "customers.view", "inventory.view", "inventory.manage", "inventory.receive", "inventory.adjust", "inventory.transfer",
-            "employees.view", "employees.create", "employees.edit", "employees.suspend", "employees.resetPassword", "employees.managePermissions",
-            "analytics.view", "offers.view", "offers.create", "offers.edit",
-            "attendance.view", "leave.view", "leave.approve", "performance.view", "performance.review",
-        ],
-    },
-    "MANAGER": {
-        "id": "MANAGER",
-        "name": "Manager",
-        "description": "Operational manager with broad but not absolute access.",
-        "permissions": [
-            "products.view", "products.manage", "categories.view", "collections.view",
-            "orders.view", "orders.fulfill", "orders.pick", "orders.pack", "orders.dispatch", "orders.cancel",
-            "returns.view", "returns.manage",
-            "customers.view", "inventory.view", "inventory.receive", "inventory.adjust",
-            "employees.view", "analytics.view", "offers.view",
-            "attendance.view", "leave.view", "performance.view",
-        ],
-    },
-    "SALES": {
-        "id": "SALES",
-        "name": "Sales",
-        "description": "Sales-floor and customer-facing operations.",
-        "permissions": ["products.view", "orders.view", "customers.view", "offers.view"],
-    },
-    "INVENTORY": {
-        "id": "INVENTORY",
-        "name": "Inventory",
-        "description": "Inventory management and stock operations.",
-        "permissions": ["inventory.view", "inventory.manage", "inventory.receive", "inventory.adjust", "inventory.transfer", "products.view"],
-    },
-    "WAREHOUSE": {
-        "id": "WAREHOUSE",
-        "name": "Warehouse",
-        "description": "Warehouse operations including pick, pack and dispatch.",
-        "permissions": ["orders.view", "orders.fulfill", "orders.pick", "orders.pack", "orders.dispatch", "inventory.view"],
-    },
-    "CS": {
-        "id": "CS",
-        "name": "Customer Support",
-        "description": "Customer support — orders, returns and customer queries.",
-        "permissions": ["orders.view", "orders.manage", "returns.view", "returns.manage", "customers.view"],
-    },
-    "STYLIST": {
-        "id": "STYLIST",
-        "name": "Stylist",
-        "description": "Product content and catalogue editing.",
-        "permissions": ["products.view", "products.manage", "media.view", "media.upload"],
-    },
-}
+from app.core.rbac import BUILT_IN_ROLES  # noqa: E402  (re-export — compat seam)
 
 
 # ===========================================================================
@@ -439,18 +271,29 @@ async def get_activity_log(
 
 
 # ===========================================================================
-# ROLES
+# ROLES / CAPABILITIES
 # ===========================================================================
 
 @router.get(
     "/roles",
     summary="List built-in roles",
-    description="Returns all 8 built-in roles with their default permission sets.",
+    description=(
+        "Returns the consolidated role catalogue with its default permission "
+        "sets. Legacy Admin-portal aliases (MANAGER, SALES, …) resolve to the "
+        "canonical business-role entries and are not listed twice."
+    ),
 )
 async def list_roles(
     current_user: UserModel = Depends(get_current_admin),
 ):
-    return {"ok": True, "roles": list(BUILT_IN_ROLES.values())}
+    seen = set()
+    roles = []
+    for role in BUILT_IN_ROLES.values():
+        if role["id"] in seen:
+            continue
+        seen.add(role["id"])
+        roles.append(role)
+    return {"ok": True, "roles": roles}
 
 
 @router.get(
@@ -465,3 +308,60 @@ async def get_role(
     if not role:
         raise NotFoundException(f"Role '{role_id}' not found.")
     return {"ok": True, "role": role}
+
+
+@router.get(
+    "/capabilities",
+    summary="List capability groups + account hierarchy contract",
+    description=(
+        "The canonical authorization vocabulary shared with the frontend "
+        "(account levels, creation matrix, capability groups, business-role "
+        "defaults). Read-only; any authenticated admin surface account."
+    ),
+)
+async def list_capabilities(
+    current_user: UserModel = Depends(get_current_admin),
+):
+    from app.core.rbac import ACCOUNT_LEVELS, ALL_CAPABILITIES, CAPABILITY_GROUPS, CREATABLE_LEVELS
+    return {
+        "ok": True,
+        "accountLevels": list(ACCOUNT_LEVELS),
+        "creatableLevels": {level: sorted(levels) for level, levels in CREATABLE_LEVELS.items()},
+        "capabilities": list(ALL_CAPABILITIES),
+        "capabilityGroups": CAPABILITY_GROUPS,
+    }
+
+
+# ===========================================================================
+# DASHBOARD — canonical portal path
+# ===========================================================================
+
+@router.get(
+    "/dashboard/summary",
+    summary="One consolidated admin-dashboard read (admin)",
+    description=(
+        "Single request feeding the Admin dashboard. Delegates to the existing "
+        "analytics summary so metric definitions stay in one place.  \n"
+        "Authorization: `analytics.view`."
+    ),
+)
+async def get_admin_dashboard_summary(
+    days: int = Query(default=7, ge=1, le=90),
+    recent_limit: int = Query(default=5, ge=1, le=20),
+    recentLimit: Optional[int] = Query(default=None, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_admin),
+):
+    """Expose the dashboard summary at GET /admin/dashboard/summary.
+
+    The implementation lives under analytics so aggregates are not duplicated.
+    The handler is imported lazily to avoid a circular import at module load.
+    """
+    from app.api.v1.analytics import admin_dashboard_summary
+
+    return await admin_dashboard_summary(
+        days=days,
+        recent_limit=recentLimit if recentLimit is not None else recent_limit,
+        db=db,
+        current_user=current_user,
+    )

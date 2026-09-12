@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from app.models.employee.attendance import AttendanceModel
     from app.models.employee.target import TargetModel
     from app.models.employee.performance import PerformanceModel
+    from app.models.employee.leave import LeaveModel
 
 
 class EmployeeProfileModel(Base):
@@ -38,4 +39,7 @@ class EmployeeProfileModel(Base):
     )
     performance_reviews: Mapped[List["PerformanceModel"]] = relationship(
         "PerformanceModel", back_populates="employee", cascade="all, delete-orphan"
+    )
+    leave_requests: Mapped[List["LeaveModel"]] = relationship(
+        "LeaveModel", back_populates="profile", cascade="all, delete-orphan"
     )

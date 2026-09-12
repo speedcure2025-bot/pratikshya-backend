@@ -27,11 +27,11 @@ from app.api.v1.stock_transfers import router as stock_transfers_router
 from app.api.v1.employees import router as employees_router
 from app.api.v1.attendance import router as attendance_router
 from app.api.v1.performance import router as performance_router
+from app.api.v1.leave import router as leave_router
 from app.api.v1.admin import router as admin_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.chatbot import router as chatbot_router
-from app.api.v1.notifications import router as notifications_router
 from app.api.v1.search import router as search_router
 from app.api.v1.explore import router as explore_router
 from app.api.v1.marketing_media import router as marketing_media_router
@@ -65,11 +65,14 @@ api_router.include_router(stock_transfers_router)
 api_router.include_router(employees_router)
 api_router.include_router(attendance_router)
 api_router.include_router(performance_router)
+api_router.include_router(leave_router)
 api_router.include_router(admin_router)
 api_router.include_router(audit_router)
 api_router.include_router(analytics_router)
 api_router.include_router(chatbot_router)
-api_router.include_router(notifications_router)
 api_router.include_router(search_router)
 api_router.include_router(explore_router)
 api_router.include_router(marketing_media_router)
+
+from app.api.v1.recommendations import router as recommendations_router
+api_router.include_router(recommendations_router)

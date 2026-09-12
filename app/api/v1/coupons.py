@@ -37,7 +37,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import and_, case, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import invalidate_response_cache
@@ -140,14 +140,25 @@ def _validate_coupon_fields(*, code, discount_type, discount_value, starts_at, e
         )
 
 
+def _utc_aware(value):
+    """Normalise a stored datetime to aware UTC.
+
+    PostgreSQL returns tz-aware values; the SQLite test harness returns
+    naive UTC. Comparisons must never mix the two.
+    """
+    if value is None or value.tzinfo:
+        return value
+    return value.replace(tzinfo=timezone.utc)
+
+
 def _coupon_to_dict(c: CouponModel) -> dict:
     now = datetime.now(timezone.utc)
     # Derive display status from dates and is_active
     if not c.is_active:
         display_status = "ARCHIVED"
-    elif c.starts_at and c.starts_at > now:
+    elif _utc_aware(c.starts_at) and _utc_aware(c.starts_at) > now:
         display_status = "SCHEDULED"
-    elif c.expires_at and c.expires_at < now:
+    elif _utc_aware(c.expires_at) and _utc_aware(c.expires_at) < now:
         display_status = "EXPIRED"
     else:
         display_status = "ACTIVE"
@@ -319,37 +330,77 @@ async def admin_list_offers(
     db: AsyncSession = Depends(get_db),
 ):
     await require_admin_permission(current_user, db, "offers.view")
-    stmt = select(CouponModel).order_by(CouponModel.created_at.desc())
+
+    # DB-side register (admin consolidation, HP-9): the display status,
+    # tiles, filtered total and the page itself are computed in SQL — the
+    # previous shape loaded every coupon and sliced in Python. The page is
+    # the only part hydrated into models; tiles come from ONE grouped query
+    # over the FULL q-filtered set, so counts still describe the register,
+    # not the page.
+    now = datetime.now(timezone.utc)
+    display_status = case(
+        (CouponModel.is_active.is_(False), literal("ARCHIVED")),
+        (
+            and_(CouponModel.starts_at.isnot(None), CouponModel.starts_at > now),
+            literal("SCHEDULED"),
+        ),
+        (
+            and_(CouponModel.expires_at.isnot(None), CouponModel.expires_at < now),
+            literal("EXPIRED"),
+        ),
+        else_=literal("ACTIVE"),
+    )
+
+    base_filters = []
     if q:
         like = f"%{q.strip().lower()}%"
-        stmt = stmt.where(
-            (CouponModel.code.ilike(like)) | (CouponModel.name.ilike(like))
+        base_filters.append((CouponModel.code.ilike(like)) | (CouponModel.name.ilike(like)))
+
+    wanted = (status or "").strip().upper()
+
+    tiles = (
+        await db.execute(
+            select(
+                display_status.label("ds"),
+                func.count().label("n"),
+                func.coalesce(func.sum(CouponModel.usage_count), 0).label("usage"),
+            )
+            .where(*base_filters)
+            .group_by("ds")
         )
-    result = await db.execute(stmt)
-    coupons = result.scalars().all()
+    ).all()
+    counts = {"total": 0, "ACTIVE": 0, "SCHEDULED": 0, "EXPIRED": 0, "ARCHIVED": 0}
+    lifetime = 0
+    for row in tiles:
+        counts[row.ds] = counts.get(row.ds, 0) + int(row.n)
+        counts["total"] += int(row.n)
+        lifetime += int(row.usage or 0)
+
+    row_filters = list(base_filters)
+    if wanted:
+        row_filters.append(display_status == wanted)
+
+    total = (
+        await db.execute(
+            select(func.count()).select_from(CouponModel).where(*row_filters)
+        )
+    ).scalar() or 0
+
+    page = max(1, page)
+    size = min(max(1, pageSize), 200)
+    coupons = (
+        await db.execute(
+            select(CouponModel)
+            .where(*row_filters)
+            .order_by(CouponModel.created_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+    ).scalars().all()
 
     rows = [_coupon_to_dict(c) for c in coupons]
 
-    # Honest aggregate tiles for the desk: derived from the FULL q-filtered
-    # set (before the status filter/pagination), so counts never describe a
-    # page while claiming to describe the register. No fabricated
-    # "usage today" or per-day analytics — those surfaces do not exist in
-    # the coupon table.
-    counts = {"total": len(rows), "ACTIVE": 0, "SCHEDULED": 0, "EXPIRED": 0, "ARCHIVED": 0}
-    lifetime = 0
-    for row in rows:
-        counts[row["display_status"]] = counts.get(row["display_status"], 0) + 1
-        lifetime += int(row.get("usage_count") or 0)
-
-    wanted = (status or "").strip().upper()
-    if wanted:
-        rows = [r for r in rows if r["display_status"] == wanted]
-
-    total = len(rows)
-    page = max(1, page)
-    size = min(max(1, pageSize), 200)
-    start = (page - 1) * size
-    return {"ok": True, "offers": rows[start : start + size], "total": total,
+    return {"ok": True, "offers": rows, "total": total,
             "page": page, "pageSize": size,
             "counts": counts, "lifetimeRedemptions": lifetime}
 

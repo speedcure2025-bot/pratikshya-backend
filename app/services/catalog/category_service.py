@@ -26,7 +26,7 @@ import re
 import unicodedata
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import cache, invalidate_response_cache
@@ -126,6 +126,52 @@ class CategoryService:
         )
         return result.scalar() or 0
 
+    async def _category_product_counts(self) -> dict:
+        """
+        ONE grouped query for the taxonomy desk (admin consolidation, HP-9):
+        ``{category_id: (published_count, total_count)}`` for every category
+        at once — replaces the per-row COUNT that made both the public and
+        admin category lists N+1.
+        """
+        published = func.sum(
+            case(
+                (
+                    and_(
+                        ProductModel.status == "PUBLISHED",
+                        ProductModel.published.is_(True),
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        )
+        result = await self.db.execute(
+            select(ProductModel.category, func.count(), published).group_by(
+                ProductModel.category
+            )
+        )
+        return {row[0]: (int(row[2] or 0), int(row[1])) for row in result.all()}
+
+    async def _subcategory_product_counts(self) -> dict:
+        """ONE grouped query: ``{(category_id, subcategory): published_count}``."""
+        result = await self.db.execute(
+            select(
+                ProductModel.category,
+                ProductModel.subcategory,
+                func.count(),
+            )
+            .where(
+                ProductModel.status == "PUBLISHED",
+                ProductModel.published.is_(True),
+            )
+            .group_by(ProductModel.category, ProductModel.subcategory)
+        )
+        return {
+            (row[0], row[1]): int(row[2] or 0)
+            for row in result.all()
+            if row[0] is not None
+        }
+
     async def _product_count_for_subcategory(self, category_id: str, subcategory_slug: str) -> int:
         result = await self.db.execute(
             select(func.count()).select_from(ProductModel).where(
@@ -210,11 +256,12 @@ class CategoryService:
         result = await self.db.execute(stmt)
         categories = result.scalars().all()
 
-        output = []
-        for cat in categories:
-            count = await self._product_count_for_category(cat.id)
-            output.append(_project_category(cat, count))
-        return output
+        # Batched product counts — one grouped query for the whole list
+        # (admin consolidation, HP-9), not one COUNT per category row.
+        counts = await self._category_product_counts()
+        return [
+            _project_category(cat, counts.get(cat.id, (0, 0))[0]) for cat in categories
+        ]
 
     async def get_category(self, id_or_slug: str) -> CategoryResponse:
         """GET /categories/{idOrSlug} — public, only ACTIVE visible."""
@@ -243,11 +290,11 @@ class CategoryService:
         result = await self.db.execute(stmt)
         subs = result.scalars().all()
 
-        output = []
-        for sub in subs:
-            count = await self._product_count_for_subcategory(cat.id, sub.slug)
-            output.append(_project_subcategory(sub, count))
-        return output
+        # Batched counts — one grouped query for the whole list.
+        counts = await self._subcategory_product_counts()
+        return [
+            _project_subcategory(sub, counts.get((cat.id, sub.slug), 0)) for sub in subs
+        ]
 
     # ── Admin — categories ────────────────────────────────────────────────────
 
@@ -334,15 +381,13 @@ class CategoryService:
         in-browser catalogue snapshot.
         """
         items = await self.list_categories(status_filter=status_filter, featured=featured)
+        # `productCount` arrives already batched via list_categories; the
+        # all-status totals come from ONE grouped query for the whole list.
+        counts = await self._category_product_counts()
         output: List[Dict[str, Any]] = []
         for item in items:
-            total_result = await self.db.execute(
-                select(func.count()).select_from(ProductModel).where(
-                    ProductModel.category == item.id
-                )
-            )
             row = item.model_dump(by_alias=True)
-            row["productCountTotal"] = total_result.scalar() or 0
+            row["productCountTotal"] = counts.get(item.id, (0, 0))[1]
             output.append(row)
         return output
 
@@ -364,11 +409,12 @@ class CategoryService:
             stmt = stmt.where(SubcategoryModel.status == status_filter)
         stmt = stmt.order_by(SubcategoryModel.sort_order.asc(), SubcategoryModel.name.asc())
         result = await self.db.execute(stmt)
-        output = []
-        for sub in result.scalars().all():
-            count = await self._product_count_for_subcategory(cat.id, sub.slug)
-            output.append(_project_subcategory(sub, count))
-        return output
+        # Batched counts — one grouped query for the whole list.
+        counts = await self._subcategory_product_counts()
+        return [
+            _project_subcategory(sub, counts.get((cat.id, sub.slug), 0))
+            for sub in result.scalars().all()
+        ]
 
     async def activate_category(self, category_id: str, actor: str) -> CategoryResponse:
         """

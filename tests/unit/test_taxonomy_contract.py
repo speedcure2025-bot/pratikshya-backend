@@ -72,6 +72,11 @@ class FakeResult:
     def scalar(self):
         return self.scalar_value
 
+    def all(self):
+        # Row tuples (the collection-service product projection) pass through;
+        # entity-style fakes wrap as 1-tuples so .all() consumers never crash.
+        return [v if isinstance(v, tuple) else (v,) for v in self.values]
+
 
 class FakeDB:
     def __init__(self, results=None, default_result=None):

@@ -28,11 +28,14 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select, func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import BusinessLogicException, NotFoundException
+from app.models.auth.user import UserModel
 from app.models.orders.return_order import ReturnOrderModel
+from app.models.orders.order import OrderModel
 from app.models.orders.return_item import ReturnItemModel
 from app.schemas.orders.order import (
     InspectReturnRequest,
@@ -87,6 +90,59 @@ async def _load_return(db: AsyncSession, return_id: str) -> ReturnOrderModel:
     return ret
 
 
+async def _attach_order_summaries(db: AsyncSession, returns) -> None:
+    """
+    Attach ``order_number`` / ``customer_name`` to a page of returns.
+
+    ONE bounded query over exactly the orders on this page (plus one for
+    customer display names) — never a full orders-table read, and no
+    per-return N+1. Missing orders degrade to None; lookup failure is
+    non-fatal: the desk still renders the return records themselves.
+    """
+    if not returns:
+        return
+    order_ids = {r.order_id for r in returns if r.order_id}
+    if not order_ids:
+        return
+    try:
+        rows = (
+            await db.execute(
+                select(
+                    OrderModel.id,
+                    OrderModel.order_number,
+                    OrderModel.customer_id,
+                    OrderModel.guest_email,
+                    OrderModel.shipping_address,
+                ).where(OrderModel.id.in_(order_ids))
+            )
+        ).all()
+        customer_ids = {row.customer_id for row in rows if row.customer_id}
+        names: Dict[str, Optional[str]] = {}
+        if customer_ids:
+            user_rows = (
+                await db.execute(
+                    select(UserModel.id, UserModel.full_name).where(UserModel.id.in_(customer_ids))
+                )
+            ).all()
+            names = {row.id: row.full_name for row in user_rows}
+        summaries = {}
+        for row in rows:
+            display = (
+                names.get(row.customer_id)
+                or (row.shipping_address or {}).get("fullName")
+                or (row.guest_email or "").split("@")[0]
+                or None
+            )
+            summaries[row.id] = (row.order_number, display)
+        for record in returns:
+            summary = summaries.get(record.order_id)
+            if summary:
+                record.order_number, record.customer_name = summary
+    except (SQLAlchemyError, TypeError, AttributeError):
+        # Display enrichment only — never fail the returns read for it.
+        pass
+
+
 class ReturnService:
     """Admin-side business logic for the returns desk."""
 
@@ -129,13 +185,17 @@ class ReturnService:
         result = await self.db.execute(paginated)
         returns = result.scalars().all()
 
+        await _attach_order_summaries(self.db, returns)
+
         return {"returns": returns, "total": total}
 
     # ── Get single return ─────────────────────────────────────────────────────
 
     async def get_return(self, return_id: str) -> ReturnOrderModel:
         """GET /admin/returns/{id}."""
-        return await _load_return(self.db, return_id)
+        ret = await _load_return(self.db, return_id)
+        await _attach_order_summaries(self.db, [ret])
+        return ret
 
     # ── Approve return ────────────────────────────────────────────────────────
 

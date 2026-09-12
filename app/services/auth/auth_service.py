@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
+from app.core.rbac import is_staff_login_blocked
 from app.core.exceptions import (
     BusinessLogicException,
     ConflictException,
@@ -55,6 +56,8 @@ from app.schemas.auth.login import (
     EmployeeLoginRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    StaffLoginRequest,
+    StaffProfileUpdateRequest,
 )
 from app.schemas.auth.token import TokenResponse, UserDTO
 
@@ -91,74 +94,45 @@ class AuthService:
         self, user_id: str
     ) -> Tuple[List[str], List[str]]:
         """
-        Return (roles, permissions) for user_id.
+        Return (roles, EFFECTIVE permissions) for user_id.
 
-        Results are cached in-process under ``rbac:{user_id}`` for 5 minutes.
-        The cache is invalidated whenever a role is assigned or removed
-        (handled in RBACService).
+        Delegates to the single canonical resolver in `app.dependencies` so
+        every surface (JWT DTO, guard checks, /auth/me) resolves through ONE
+        code path: same joins, same built-in-role fallback, same capability
+        expansion and the same in-process ``rbac:{user_id}`` cache (5 minutes,
+        invalidated whenever a role/permission assignment changes).
+
+        SECURITY NOTE (2026-09 consolidation): the former implementation added
+        a `"*"` wildcard for ANY user carrying the plain `ADMIN` role — that
+        made every `require_admin_permission` check a no-op for Admins and
+        directly contradicted capability-based Admin authority. The wildcard
+        override now belongs to SUPER_ADMIN only (top-level override); Admin
+        access is the sum of the capabilities actually held.
         """
-        redis = get_redis()
-        cache_key = f"rbac:{user_id}"
+        from app.dependencies import get_user_roles_and_permissions
 
-        cached = await redis.get(cache_key)
-        if cached:
-            data = json.loads(cached)
-            return data["roles"], data["permissions"]
-
-        # Cache miss — query DB
-        stmt = (
-            select(UserRoleModel)
-            .where(UserRoleModel.user_id == user_id)
-            .options(
-                selectinload(UserRoleModel.role)
-                .selectinload(RoleModel.permissions)
-                .selectinload(RolePermissionModel.permission)
-            )
-        )
-        result = await self.db.execute(stmt)
-        user_roles = result.scalars().all()
-
-        roles_list: List[str] = []
-        perms_set: set = set()
-
-        for ur in user_roles:
-            if ur.role:
-                roles_list.append(ur.role.name)
-                for rp in ur.role.permissions:
-                    if rp.permission:
-                        perms_set.add(rp.permission.code)
-
-        # Include built-in static permissions fallback for system roles (e.g. SUPER_ADMIN, ADMIN)
-        from app.api.v1.admin import BUILT_IN_ROLES
-        for rname in roles_list:
-            role_key = rname.upper()
-            if role_key in BUILT_IN_ROLES:
-                for pcode in BUILT_IN_ROLES[role_key].get("permissions", []):
-                    perms_set.add(pcode)
-
-        # Super admin users always have wildcard and full workflow permissions
-        if "SUPER_ADMIN" in roles_list or "ADMIN" in roles_list:
-            perms_set.add("*")
-
-        perms_list = list(perms_set)
-
-        # Populate cache
-        await redis.setex(
-            cache_key,
-            _RBAC_CACHE_TTL,
-            json.dumps({"roles": roles_list, "permissions": perms_list}),
-        )
-
-        return roles_list, perms_list
+        user = await self.db.get(UserModel, user_id)
+        if user is None:
+            return [], []
+        return await get_user_roles_and_permissions(user, self.db)
 
     async def invalidate_rbac_cache(self, user_id: str) -> None:
         """Remove cached role/permission data for user_id.  Call after role changes."""
-        await get_redis().delete(f"rbac:{user_id}")
+        from app.dependencies import invalidate_rbac_cache as _invalidate
+
+        await _invalidate(user_id)
 
     async def _build_user_dto(self, user: UserModel, roles: List[str], permissions: List[str]) -> UserDTO:
         """Build the frontend-facing identity DTO with existing profile fields."""
+        from app.core.rbac import (
+            ADMIN_WORKSPACE_LEVELS,
+            BUSINESS_ROLE_NAMES,
+            EMPLOYEE_WORKSPACE_LEVELS,
+            canonical_role_name,
+        )
+
         extra: dict = {}
-        if user.user_type == "employee":
+        if user.user_type in ("employee", "admin"):
             profile_res = await self.db.execute(
                 select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
             )
@@ -172,11 +146,39 @@ class AuthService:
                     department_id=profile.department_id,
                     section_id=profile.section_id,
                 )
-        elif user.user_type == "admin":
-            # The current schema has no separate admin-profile table/code. Keep
-            # admin identity explicit and stable by exposing the authoritative
-            # user UUID under both legacy aliases without inventing DB fields.
-            extra.update(admin_code=user.id, adminId=user.id)
+            if user.user_type == "admin":
+                # Prefer the PF staff code when one exists (accounts created
+                # through People); fall back to the user UUID for bootstrap
+                # SUPER_ADMIN rows that predate staff profiles.
+                staff_code = profile.employee_code if profile else user.id
+                extra.update(admin_code=staff_code, adminId=staff_code)
+
+        # ── Account-level model (unified auth consolidation) ────────────────
+        # ONE canonical field — the frontend routes on this, never on derived
+        # is_admin/is_employee flags. Legacy rows fall back to a
+        # deterministic derivation so pre-migration users keep working.
+        from app.dependencies import resolve_account_level
+
+        account_level = resolve_account_level(user, roles)
+        business_role = None
+        for role_name in roles:
+            canonical = canonical_role_name(role_name)
+            if canonical in BUSINESS_ROLE_NAMES:
+                business_role = canonical
+                break
+        if account_level in ADMIN_WORKSPACE_LEVELS:
+            workspace = "admin"
+        elif account_level in EMPLOYEE_WORKSPACE_LEVELS:
+            workspace = "employee"
+        else:
+            workspace = "customer"
+        extra.update(
+            account_level=account_level,
+            accountLevel=account_level,
+            business_role=business_role,
+            businessRole=business_role,
+            workspace=workspace,
+        )
 
         return UserDTO(
             id=user.id,
@@ -189,6 +191,9 @@ class AuthService:
             force_password_change=user.force_password_change,
             roles=roles,
             permissions=permissions,
+            permission_mode=getattr(user, "permission_mode", None) or "role",
+            created_at=getattr(user, "created_at", None),
+            createdAt=getattr(user, "created_at", None),
             **extra,
         )
 
@@ -333,7 +338,7 @@ class AuthService:
         self.db.add(new_user)
         await self.db.flush()
 
-        self.db.add(CustomerProfileModel(user_id=new_user.id))
+        self.db.add(CustomerProfileModel(user_id=new_user.id, first_name=req.firstName, last_name=req.lastName))
 
         role_stmt = select(RoleModel).where(RoleModel.name == "CUSTOMER")
         role_res = await self.db.execute(role_stmt)
@@ -423,7 +428,7 @@ class AuthService:
         if not user or user.user_type != "employee":
             raise UnauthorizedException("That employee ID does not match our records.")
 
-        if user.status in ("SUSPENDED", "INACTIVE"):
+        if is_staff_login_blocked(user.status):
             raise ForbiddenException(
                 f"Employee account is {user.status.lower()}. Access denied."
             )
@@ -497,6 +502,7 @@ class AuthService:
             full_name=req.full_name,
             hashed_password=hash_password(req.password),
             user_type="admin",
+            account_level="SUPER_ADMIN",  # this path bootstraps system owners only
             status="ACTIVE",
             is_verified=True,
             force_password_change=False,
@@ -542,8 +548,10 @@ class AuthService:
         if not user or user.user_type != "admin":
             raise ForbiddenException("Admin access privileges required.")
 
-        if user.status == "SUSPENDED":
-            raise ForbiddenException("Admin account is suspended. Access denied.")
+        if is_staff_login_blocked(user.status):
+            raise ForbiddenException(
+                f"Admin account is {user.status.lower()}. Access denied."
+            )
 
         if not user.hashed_password:
             raise UnauthorizedException(
@@ -557,6 +565,71 @@ class AuthService:
         logger.info("Admin login success user_id=%s ip=%s", user.id, ip_address)
         return await self._build_token_response(
             user, ip_address, user_agent, surface="admin"
+        )
+
+    # ── Unified Staff Login (all four account levels) ─────────────────────────
+
+    async def sign_in_staff(
+        self,
+        req: StaffLoginRequest,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> TokenResponse:
+        """
+        ONE authentication flow for SUPER_ADMIN / ADMIN / SUPER_EMPLOYEE /
+        EMPLOYEE. This is not a second auth system: it reuses the same
+        credential verification, token issuance, session bookkeeping and
+        response envelope as the per-surface logins (which remain available
+        for backwards compatibility). The account level is determined
+        SERVER-SIDE from the resolved user row — the frontend only routes on
+        the returned `account_level`/`workspace`.
+        """
+        identifier = (req.identifier or "").strip()
+        if not identifier:
+            raise UnauthorizedException("Enter your email, phone or employee ID.")
+
+        stmt = (
+            select(UserModel)
+            .outerjoin(
+                EmployeeProfileModel,
+                EmployeeProfileModel.user_id == UserModel.id,
+            )
+            .where(
+                or_(
+                    UserModel.email == identifier,
+                    UserModel.phone == identifier,
+                    EmployeeProfileModel.employee_code == identifier,
+                )
+            )
+        )
+        res = await self.db.execute(stmt)
+        user = res.scalars().first()
+
+        if not user or user.user_type == "customer":
+            logger.warning("Staff login failed — unknown identifier ip=%s", ip_address)
+            raise UnauthorizedException("Those credentials don't match a staff account.")
+
+        if is_staff_login_blocked(user.status):
+            raise ForbiddenException(f"Account is {user.status.lower()}. Access denied.")
+
+        if not user.hashed_password:
+            raise UnauthorizedException(
+                "This account has no password issued. Please contact your administrator."
+            )
+
+        if not verify_password(req.password, user.hashed_password):
+            # Same message as the unknown-identifier branch above: the unified
+            # endpoint never distinguishes "no such account" from "wrong
+            # password", so it cannot be used to enumerate staff accounts.
+            logger.warning("Staff login failed — wrong password user_id=%s ip=%s", user.id, ip_address)
+            raise UnauthorizedException("Those credentials don't match a staff account.")
+
+        surface = "admin" if user.user_type == "admin" else "employee"
+        logger.info(
+            "Staff login success user_id=%s surface=%s ip=%s", user.id, surface, ip_address
+        )
+        return await self._build_token_response(
+            user, ip_address, user_agent, surface=surface
         )
 
     # ── Token Refresh ─────────────────────────────────────────────────────────
@@ -657,6 +730,65 @@ class AuthService:
         logger.info("User logged out user_id=%s", user_id)
         return True
 
+    # ── Staff self-service profile ────────────────────────────────────────────
+
+    async def update_own_profile(
+        self, user: UserModel, req: StaffProfileUpdateRequest
+    ) -> UserModel:
+        """
+        Persist the signed-in staff member's own contact identity.
+
+        Writes only users.full_name / email / phone and, when a staff profile
+        row exists, employee_profiles.designation. Does not touch roles,
+        account_level, employee_code, or customer profiles.
+        """
+        if user.user_type == "customer":
+            raise ForbiddenException(
+                "Customer accounts update their profile through the customer account endpoint."
+            )
+
+        if req.full_name:
+            user.full_name = req.full_name.strip()
+
+        if req.email is not None:
+            email_str = str(req.email).strip().lower()
+            dup = await self.db.execute(
+                select(UserModel).where(
+                    UserModel.email == email_str,
+                    UserModel.id != user.id,
+                )
+            )
+            if dup.scalars().first():
+                raise ConflictException("That email address is already in use.")
+            user.email = email_str
+
+        if "phone" in req.model_fields_set:
+            phone = (str(req.phone).strip() if req.phone else "") or None
+            if phone != user.phone:
+                if phone:
+                    dup = await self.db.execute(
+                        select(UserModel).where(
+                            UserModel.phone == phone,
+                            UserModel.id != user.id,
+                        )
+                    )
+                    if dup.scalars().first():
+                        raise ConflictException("That phone number is already in use.")
+                user.phone = phone
+
+        if req.designation:
+            profile_res = await self.db.execute(
+                select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
+            )
+            profile = profile_res.scalars().first()
+            if profile:
+                profile.designation = req.designation.strip()
+
+        await self.db.commit()
+        await self.db.refresh(user)
+        logger.info("Staff profile updated user_id=%s", user.id)
+        return user
+
     # ── Change Password ───────────────────────────────────────────────────────
 
     async def change_password(
@@ -692,6 +824,7 @@ class AuthService:
         if not verify_password(old_password, user.hashed_password):
             raise BusinessLogicException("Current password is not correct.")
 
+        was_forced = bool(user.force_password_change)
         user.hashed_password = hash_password(new_password)
         user.force_password_change = False
 
@@ -706,12 +839,19 @@ class AuthService:
 
         await self.db.commit()
 
-        # Blacklist current access token + clear RBAC cache
-        if access_token:
+        # Blacklist current access token + clear RBAC cache.
+        # For the initial forced-password flow (SUPER_EMPLOYEE / EMPLOYEE
+        # first-time Set New Password) the current access token must stay
+        # valid so the employee can be routed to /employee and hydrated
+        # without a blank-page race. The frontend's re-auth (apiSignInStaff
+        # with the new password) still establishes a fresh session
+        # immediately after; keeping the old token for a few minutes only
+        # avoids a gap where the UI navigates before the re-auth completes.
+        if access_token and not was_forced:
             await self._blacklist_token(access_token, token_type="access")
         await self.invalidate_rbac_cache(user_id)
 
-        logger.info("Password changed user_id=%s", user_id)
+        logger.info("Password changed user_id=%s was_forced=%s", user_id, was_forced)
         return True
 
     # ── OTP ───────────────────────────────────────────────────────────────────

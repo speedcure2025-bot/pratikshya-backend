@@ -24,12 +24,24 @@ URL mapping (spec → implementation):
   POST /auth/admin/sign-in         ← rate limited: 10/minute per IP
   POST /auth/admin/sign-out
 
+  Unified staff login (all four account levels — the /login page calls this)
+  ─────────────────────────────────────────────────────────
+  POST /auth/staff/sign-in     ← identifier = email | phone | PF-code; the
+                                  backend resolves the account level and
+                                  issues the matching admin/employee surface
+                                  response. The per-surface employee/admin
+                                  sign-ins above stay live as compatibility
+                                  endpoints for existing callers — there is
+                                  exactly ONE authentication service behind
+                                  all of them (AuthService).
+
   Shared
   ─────────────────────────────────────────────────────────
   POST /auth/refresh
   POST /auth/logout
   POST /auth/change-password
   GET  /auth/me
+  PATCH /auth/me                   staff self-service profile (not customers)
 
   OAuth
   ─────────────────────────────────────────────────────────
@@ -59,6 +71,8 @@ from app.schemas.auth.login import (
     ForgotPasswordRequest,
     RefreshTokenRequest,
     ResetPasswordRequest,
+    StaffLoginRequest,
+    StaffProfileUpdateRequest,
 )
 from app.schemas.auth.oauth import GoogleOAuthRequest, FacebookOAuthRequest
 from app.schemas.auth.token import (
@@ -288,6 +302,34 @@ async def employee_refresh_token(
     )
 
 
+@router.post(
+    "/staff/sign-in",
+    response_model=TokenResponse,
+    summary="Unified staff sign-in (SUPER_ADMIN / ADMIN / SUPER_EMPLOYEE / EMPLOYEE)",
+    description=(
+        "Body: `{ identifier: 'email | phone | PF-<PREFIX>-#####', password }`.\n\n"
+        "The ONE canonical login for all four staff account levels. The backend\n"
+        "authenticates the credential, resolves the account level from the user\n"
+        "row and returns the surface-specific payload (`admin` for the Admin\n"
+        "workspace levels, `employee` for the Employee workspace levels) with\n"
+        "`account_level` / `workspace` on the DTO so the frontend can route.\n\n"
+        "Customer storefront sign-in remains `/auth/customer/sign-in`; the\n"
+        "legacy per-surface staff sign-ins remain as compatibility aliases.\n\n"
+        "Rate limited to 10 attempts per minute per IP address."
+    ),
+)
+@limiter.limit(_LOGIN_LIMIT)
+async def sign_in_staff(
+    req: StaffLoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(db)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    return await service.sign_in_staff(req, ip_address=client_ip, user_agent=user_agent)
+
+
 # ===========================================================================
 # ADMIN — Registration / Sign-in / Sign-out
 # ===========================================================================
@@ -296,8 +338,11 @@ async def employee_refresh_token(
     "/admin/sign-up",
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create an admin account",
+    summary="Bootstrap a SUPER_ADMIN account",
     description=(
+        "**This endpoint always creates a `SUPER_ADMIN` account.** "
+        "To create `ADMIN`, `SUPER_EMPLOYEE`, or `EMPLOYEE` accounts use "
+        "`POST /admin/employees` instead.\n\n"
         "**Two allowed paths:**\n\n"
         "1. **Bootstrap** (no active admins exist) — anyone may call this. "
         "Gated by `ADMIN_BOOTSTRAP_SECRET` if that env var is set.\n\n"
@@ -454,6 +499,28 @@ async def get_me(
     service = AuthService(db)
     roles, permissions = await service._get_user_roles_and_permissions(current_user.id)
     return await service._build_user_dto(current_user, roles, permissions)
+
+
+@router.patch(
+    "/me",
+    response_model=UserDTO,
+    summary="Update current staff profile (name, phone, email, title)",
+    description=(
+        "Staff self-service (SUPER_ADMIN / ADMIN / SUPER_EMPLOYEE / EMPLOYEE). "
+        "Persists display name, phone, email and title/designation on the "
+        "signed-in user. Role, account level and employee code cannot be "
+        "changed here. Customers use PATCH /customers/me."
+    ),
+)
+async def update_me(
+    req: StaffProfileUpdateRequest,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(db)
+    user = await service.update_own_profile(current_user, req)
+    roles, permissions = await service._get_user_roles_and_permissions(user.id)
+    return await service._build_user_dto(user, roles, permissions)
 
 
 # ===========================================================================

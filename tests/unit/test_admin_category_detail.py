@@ -69,6 +69,11 @@ class FakeResult:
     def scalar(self):
         return self.scalar_value
 
+    def all(self):
+        # Column-level grouped SELECTs (batched taxonomy counts) consume
+        # rows directly.
+        return list(self.values)
+
 
 class FakeDB:
     """Queue-based fake AsyncSession that records every statement it ran."""
