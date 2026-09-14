@@ -81,8 +81,15 @@ SCHEMA = "pratikshya"
 
 def upgrade() -> None:
     # ── Replace the empty stubs (child first, parent second) ──────────────────
-    op.drop_table("media_product_media", schema=SCHEMA)
-    op.drop_table("media_media_asset", schema=SCHEMA)
+    # If the marketing-media migration (c7d8e9f0a1b2) already ran on a parallel
+    # branch, media_marketing_media holds a FK to media_media_asset. Drop it
+    # temporarily so the parent table can be recreated.
+    op.execute(
+        "ALTER TABLE IF EXISTS pratikshya.media_marketing_media "
+        "DROP CONSTRAINT IF EXISTS media_marketing_media_media_asset_id_fkey"
+    )
+    op.execute("DROP TABLE IF EXISTS pratikshya.media_product_media")
+    op.execute("DROP TABLE IF EXISTS pratikshya.media_media_asset")
 
     # ── media_media_asset: durable identity for one stored object ─────────────
     op.create_table(
@@ -173,6 +180,21 @@ def upgrade() -> None:
         ["checksum_sha256"],
         unique=False,
         schema=SCHEMA,
+    )
+
+    # Re-add the FK from media_marketing_media → media_media_asset if the
+    # marketing-media table already exists (parallel branch).
+    op.execute(
+        "DO $$ BEGIN "
+        "IF EXISTS (SELECT 1 FROM information_schema.tables "
+        "           WHERE table_schema = 'pratikshya' "
+        "             AND table_name = 'media_marketing_media') THEN "
+        "  ALTER TABLE pratikshya.media_marketing_media "
+        "    ADD CONSTRAINT media_marketing_media_media_asset_id_fkey "
+        "    FOREIGN KEY (media_asset_id) REFERENCES pratikshya.media_media_asset(id) "
+        "    ON DELETE SET NULL; "
+        "END IF; "
+        "END $$"
     )
 
     # ── media_product_media: ordered product <-> asset mapping ────────────────

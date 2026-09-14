@@ -28,17 +28,12 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessLogicException
-from app.core.constants import REVENUE_ORDER_STATUSES as _REVENUE_STATUSES
 from app.dependencies import get_current_admin, get_db, require_admin_permission
 from app.models.auth.user import UserModel
-from app.models.catalog.product import ProductModel
-from app.models.orders.order import OrderModel
-from app.models.orders.order_item import OrderItemModel
-from app.models.orders.return_order import ReturnOrderModel
+from app.services.analytics.analytics_service import AnalyticsService
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
 
@@ -100,176 +95,54 @@ def resolve_topic(question: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Bounded read-only helpers (SELECT only — the assistant never writes)
+# Bounded read-only helpers — now delegating to the shared AnalyticsService.
+# Each function keeps its return signature so the answer builders below
+# remain unchanged.
 # ---------------------------------------------------------------------------
 
 async def _period_metrics(db: AsyncSession, since: datetime) -> Dict[str, Any]:
-    totals = (
-        await db.execute(
-            select(
-                func.coalesce(func.sum(OrderModel.total), 0),
-                func.count(OrderModel.id),
-                func.coalesce(func.sum(
-                    case(
-                        (OrderModel.status.in_(_REVENUE_STATUSES), OrderModel.total), else_=0
-                    )
-                ), 0),
-            ).where(OrderModel.created_at >= since)
-        )
-    ).first() or (0, 0, 0)
-    cancelled = (
-        await db.execute(
-            select(func.count()).select_from(OrderModel).where(
-                OrderModel.status == "CANCELLED", OrderModel.created_at >= since
-            )
-        )
-    ).scalar() or 0
-    return {
-        "orders": int(totals[1] or 0),
-        "gross": int(totals[0] or 0),
-        "revenue": int(totals[2] or 0),
-        "cancelled": int(cancelled),
-        "aov": int(totals[2] or 0) // max(1, int(totals[1] or 0)),
-    }
+    return await AnalyticsService(db).period_metrics(since=since)
 
 
 async def _inventory_counts(db: AsyncSession) -> Dict[str, Any]:
-    row = (
-        await db.execute(
-            select(
-                func.count(ProductModel.id),
-                func.sum(
-                    case(
-                        (ProductModel.stock <= ProductModel.low_stock_threshold, 1), else_=0
-                    )
-                ),
-                func.sum(
-                    case((ProductModel.stock == 0, 1), else_=0)
-                ),
-            ).where(ProductModel.published.is_(True))
-        )
-    ).first() or (0, 0, 0)
-    return {"products": int(row[0] or 0), "low": int(row[1] or 0), "out": int(row[2] or 0)}
+    raw = await AnalyticsService(db).product_stock_summary_published()
+    return {"products": raw["product_count"], "low": raw["low_stock"], "out": raw["out_of_stock"]}
 
 
 async def _low_stock_rows(db: AsyncSession, limit: int = 5) -> List[Dict[str, Any]]:
-    rows = (
-        await db.execute(
-            select(ProductModel.name, ProductModel.stock, ProductModel.low_stock_threshold)
-            .where(
-                ProductModel.published.is_(True),
-                ProductModel.stock <= ProductModel.low_stock_threshold,
-            )
-            .order_by(ProductModel.stock.asc())
-            .limit(limit)
-        )
-    ).all()
-    return [{"label": r[0], "value": f"{int(r[1] or 0)} in stock (threshold {int(r[2] or 0)})"} for r in rows]
+    rows = await AnalyticsService(db).low_stock_rows(limit=limit, published_only=True)
+    return [{"label": r["label"], "value": r["value"]} for r in rows]
 
 
 async def _top_products(db: AsyncSession, since: datetime, limit: int = 5) -> List[Dict[str, Any]]:
-    rows = (
-        await db.execute(
-            select(
-                OrderItemModel.product_name,
-                func.sum(OrderItemModel.line_total),
-                func.sum(OrderItemModel.quantity),
-            )
-            .join(OrderModel, OrderModel.id == OrderItemModel.order_id)
-            .where(OrderModel.created_at >= since, OrderModel.status.in_(_REVENUE_STATUSES))
-            .group_by(OrderItemModel.product_name)
-            .order_by(func.sum(OrderItemModel.line_total).desc())
-            .limit(limit)
-        )
-    ).all()
-    return [{"label": r[0], "value": f"₹{int(r[1] or 0):,} · {int(r[2] or 0)} pcs"} for r in rows]
+    rows = await AnalyticsService(db).top_products(since=since, limit=limit)
+    return [{"label": r["label"], "value": r["value"]} for r in rows]
 
 
 async def _category_revenue(db: AsyncSession, since: datetime, limit: int = 5) -> List[Dict[str, Any]]:
-    rows = (
-        await db.execute(
-            select(
-                func.coalesce(func.nullif(ProductModel.category, ""), "unassigned"),
-                func.sum(OrderItemModel.line_total),
-            )
-            .join(OrderModel, OrderModel.id == OrderItemModel.order_id)
-            .join(ProductModel, ProductModel.id == OrderItemModel.product_id)
-            .where(OrderModel.created_at >= since, OrderModel.status.in_(_REVENUE_STATUSES))
-            .group_by(func.coalesce(func.nullif(ProductModel.category, ""), "unassigned"))
-            .order_by(func.sum(OrderItemModel.line_total).desc())
-            .limit(limit)
-        )
-    ).all()
-    return [{"label": str(r[0]), "value": f"₹{int(r[1] or 0):,}"} for r in rows]
+    rows = await AnalyticsService(db).category_revenue(since=since, limit=limit)
+    return [{"label": r["label"], "value": f"₹{r['revenue']:,}"} for r in rows]
 
 
 async def _top_customers(db: AsyncSession, since: datetime, limit: int = 5) -> List[Dict[str, Any]]:
-    rows = (
-        await db.execute(
-            select(OrderModel.customer_id, func.sum(OrderModel.total), func.count())
-            .where(
-                OrderModel.created_at >= since,
-                OrderModel.customer_id.isnot(None),
-                OrderModel.status.in_(_REVENUE_STATUSES),
-            )
-            .group_by(OrderModel.customer_id)
-            .order_by(func.sum(OrderModel.total).desc())
-            .limit(limit)
-        )
-    ).all()
-    out = []
-    for customer_id, spend, orders in rows:
-        name = (
-            await db.execute(
-                select(UserModel.full_name).where(UserModel.id == customer_id)
-            )
-        ).scalar()
-        out.append({
-            "label": name or customer_id[:8],
-            "value": f"₹{int(spend or 0):,} · {int(orders)} orders",
-        })
-    return out
+    rows = await AnalyticsService(db).top_customers(since=since, limit=limit)
+    return [{"label": r["label"], "value": r["value"]} for r in rows]
 
 
 async def _returns_summary(db: AsyncSession, since: datetime) -> Dict[str, Any]:
-    rows = (
-        await db.execute(
-            select(ReturnOrderModel.status, func.count(), func.coalesce(func.sum(ReturnOrderModel.refund_amount), 0))
-            .where(ReturnOrderModel.created_at >= since)
-            .group_by(ReturnOrderModel.status)
-        )
-    ).all()
-    counts = {r[0]: int(r[1]) for r in rows}
-    refunded_value = next((int(r[2]) for r in rows if r[0] == "REFUNDED"), 0)
-    return {"counts": counts, "total": sum(counts.values()), "refunded": refunded_value}
+    return await AnalyticsService(db).returns_summary(since=since)
 
 
 async def _offers_summary(db: AsyncSession) -> Dict[str, Any]:
-    from app.models.commerce.coupon import CouponModel
-
-    active = (
-        await db.execute(
-            select(func.count()).select_from(CouponModel).where(CouponModel.is_active.is_(True))
-        )
-    ).scalar() or 0
-    redemptions = (
-        await db.execute(select(func.coalesce(func.sum(CouponModel.usage_count), 0)))
-    ).scalar() or 0
-    return {"active": int(active), "redemptions": int(redemptions)}
+    return await AnalyticsService(db).offers_summary()
 
 
 async def _fulfillment_pipeline(db: AsyncSession) -> Dict[str, int]:
-    rows = (await db.execute(select(OrderModel.status, func.count()).group_by(OrderModel.status))).all()
-    return {r[0]: int(r[1]) for r in rows}
+    return await AnalyticsService(db).fulfillment_pipeline()
 
 
 async def _customer_counts(db: AsyncSession) -> Dict[str, int]:
-    total = (
-        await db.execute(
-            select(func.count()).select_from(UserModel).where(UserModel.user_type == "customer")
-        )
-    ).scalar() or 0
-    return {"total": int(total)}
+    return await AnalyticsService(db).customer_counts()
 
 
 def _inr(value: int) -> str:
@@ -509,7 +382,7 @@ async def build_business_answer(db: AsyncSession, question: str, preset: PeriodP
         )
 
     if topic == "OFFERS":
-        summary = await _offers_summary()
+        summary = await _offers_summary(db)
         if summary["active"] == 0 and summary["redemptions"] == 0:
             return _answer(
                 "NO_DATA",
@@ -550,11 +423,7 @@ async def build_business_answer(db: AsyncSession, question: str, preset: PeriodP
         )
 
     if topic == "WORKFORCE":
-        total = (
-            await db.execute(
-                select(func.count()).select_from(UserModel).where(UserModel.user_type == "employee")
-            )
-        ).scalar() or 0
+        total = await AnalyticsService(db).employee_user_count()
         if total == 0:
             return _answer(
                 "NO_DATA",

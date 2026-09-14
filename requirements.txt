@@ -51,6 +51,7 @@ twilio==9.0.5
 
 # --- Payment Gateway ---
 razorpay==1.4.2
+setuptools>=65.0.0  # Provides pkg_resources required by razorpay on Python 3.12+
 
 # --- Redis / Caching ---
 fastapi-cache2==0.2.1

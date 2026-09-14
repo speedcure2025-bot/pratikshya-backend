@@ -1,13 +1,13 @@
 """Customer behavioral interactions; operational audit diary unchanged.
 
-Revision ID: d8e9f0a1b2c3
-Revises: c7d8e9f0a1b2
+Revision ID: d8e9f0a2b2c3
+Revises: d8e9f0a1b2c3
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "d8e9f0a1b2c3"
-down_revision = "c7d8e9f0a1b2"
+revision = "d8e9f0a2b2c3"
+down_revision = "d8e9f0a1b2c3"
 branch_labels = None
 depends_on = None
 

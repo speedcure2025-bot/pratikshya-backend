@@ -55,6 +55,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from app.core.database import engine
+
 # Configure Middlewares & Error Handlers
 setup_middleware(app)
 register_error_handlers(app)
@@ -67,8 +71,20 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/health", tags=["System"])
 async def root_health_check():
-    return {
-        "status": "online",
-        "app_name": settings.APP_NAME,
-        "environment": settings.APP_ENV,
-    }
+    db_status = "connected"
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"disconnected ({type(e).__name__})"
+
+    is_healthy = db_status == "connected"
+    return JSONResponse(
+        status_code=200 if is_healthy else 503,
+        content={
+            "status": "online" if is_healthy else "degraded",
+            "app_name": settings.APP_NAME,
+            "environment": settings.APP_ENV,
+            "database": db_status,
+        },
+    )

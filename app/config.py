@@ -109,7 +109,7 @@ class Settings(BaseSettings):
     # --- Local media import (Phase 6 migration tool) ---
     # Read-only source of the real product assets. The importer only ever
     # copies FROM here; it never writes, moves or deletes inside it.
-    LOCAL_MEDIA_IMPORT_SOURCE: str = "../frontend/public/images"
+    LOCAL_MEDIA_IMPORT_SOURCE: str = "../../frontend/pratikshya-frontend/public/images"
 
     # --- Payment (Razorpay) ---
     RAZORPAY_KEY_ID: Optional[str] = "your-razorpay-key-id"

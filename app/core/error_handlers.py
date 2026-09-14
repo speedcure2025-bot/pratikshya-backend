@@ -127,6 +127,30 @@ def register_error_handlers(app: FastAPI) -> None:
             },
         )
 
+    try:
+        from sqlalchemy.exc import DBAPIError, OperationalError
+
+        @app.exception_handler(OperationalError)
+        @app.exception_handler(DBAPIError)
+        async def db_connection_exception_handler(request: Request, exc: Exception):
+            logger.error(
+                "Database error path=%s method=%s: %s",
+                request.url.path, request.method, str(exc),
+            )
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": "DATABASE_UNAVAILABLE",
+                        "message": "Database connection failed. Please ensure PostgreSQL is running.",
+                        "details": {},
+                    },
+                },
+            )
+    except ImportError:
+        pass
+
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         logger.error(

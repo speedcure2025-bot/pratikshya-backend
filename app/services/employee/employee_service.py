@@ -278,6 +278,10 @@ class EmployeeService:
             role_names.append("SUPER_ADMIN")
         elif target_level == "ADMIN":
             role_names.append("ADMIN")
+        elif target_level == "SUPER_EMPLOYEE":
+            role_names.append("SUPER_EMPLOYEE")
+            if business_role and business_role != "SUPER_EMPLOYEE":
+                role_names.append(business_role)
         elif is_employee_domain and business_role:
             role_names.append(business_role)
 

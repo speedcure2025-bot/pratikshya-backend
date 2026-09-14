@@ -216,6 +216,16 @@ _ROLE_DEFS: Dict[str, dict] = {
             "ai.view",
         ],
     },
+    "SUPER_EMPLOYEE": {
+        "id": "SUPER_EMPLOYEE",
+        "name": "Super Employee",
+        "description": "Elevated employee with workforce and team management authority.",
+        "permissions": [
+            "employees.view", "employees.create", "employees.edit", "employees.suspend", "employees.resetPassword",
+            "attendance.view", "attendance.manage", "leave.view", "leave.approve", "performance.view", "performance.manage",
+            "audit.view", "users.view",
+        ],
+    },
     "STORE_MANAGER": {
         "id": "STORE_MANAGER",
         "name": "Store Manager",
@@ -315,6 +325,10 @@ def resolve_stored_grants(
         (account_level or "").upper() == ACCOUNT_LEVEL_SUPER_ADMIN
         or ACCOUNT_LEVEL_SUPER_ADMIN in {role.upper() for role in role_list}
     )
+    is_super_employee = (
+        (account_level or "").upper() == ACCOUNT_LEVEL_SUPER_EMPLOYEE
+        or ACCOUNT_LEVEL_SUPER_EMPLOYEE in {role.upper() for role in role_list}
+    )
     if (permission_mode or "").lower() == "custom":
         grants = {str(code) for code in (custom_permissions or []) if code}
     else:
@@ -323,6 +337,9 @@ def resolve_stored_grants(
             entry = BUILT_IN_ROLES.get(canonical_role_name(role) or "")
             if entry:
                 grants.update(entry.get("permissions") or [])
+        if is_super_employee:
+            grants.add("people.manage")
+            grants.add("people.view")
     if is_super_admin:
         grants.add("*")
     return grants

@@ -1,8 +1,3 @@
-from fastapi import APIRouter
-
-router = APIRouter(prefix="/chatbot", tags=["AI RAG Chatbot"])
-
-
-@router.get("/health", summary="Module health check")
-async def health_check():
-    return {"module": "chatbot", "status": "active"}
+# DEPRECATED: This file is superseded by ai_assistant.py.
+# It is no longer imported by router.py.
+# Safe to delete this file.
