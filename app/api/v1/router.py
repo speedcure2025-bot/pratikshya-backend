@@ -35,6 +35,10 @@ from app.api.v1.ai_assistant import router as ai_assistant_router
 from app.api.v1.search import router as search_router
 from app.api.v1.explore import router as explore_router
 from app.api.v1.marketing_media import router as marketing_media_router
+from app.api.v1.styling import router as styling_router
+from app.api.v1.support import router as support_router
+from app.api.v1.notifications import router as notifications_router
+from app.api.v1.recommendations import router as recommendations_router
 
 api_router = APIRouter()
 
@@ -73,6 +77,8 @@ api_router.include_router(ai_assistant_router)
 api_router.include_router(search_router)
 api_router.include_router(explore_router)
 api_router.include_router(marketing_media_router)
-
-from app.api.v1.recommendations import router as recommendations_router
+api_router.include_router(styling_router)
+api_router.include_router(support_router)
+api_router.include_router(notifications_router)
 api_router.include_router(recommendations_router)
+

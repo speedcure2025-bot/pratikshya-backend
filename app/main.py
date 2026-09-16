@@ -12,7 +12,7 @@ from app.core.redis import close_redis, init_redis
 import app.models  # noqa: F401 — ensures all SQLAlchemy models are registered before mapper config
 from app.api.v1.router import api_router
 
-# Main application entry point — Pratikshya Fashon API
+# Main application entry point — PRATIKSHYA FASHON API (schema synced)
 logger = get_logger("app.main")
 
 

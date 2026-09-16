@@ -247,8 +247,8 @@ class CategoryService:
         Default: status=ACTIVE. Sorted by sort_order ASC, then name ASC.
         """
         stmt = select(CategoryModel)
-        if status_filter:
-            stmt = stmt.where(CategoryModel.status == status_filter)
+        if status_filter and status_filter.upper() != "ALL":
+            stmt = stmt.where(CategoryModel.status == status_filter.upper())
         if featured is not None:
             stmt = stmt.where(CategoryModel.featured.is_(featured))
         stmt = stmt.order_by(CategoryModel.sort_order.asc(), CategoryModel.name.asc())
@@ -283,8 +283,8 @@ class CategoryService:
         cat = await self._get_category_or_404(category_id)
 
         stmt = select(SubcategoryModel).where(SubcategoryModel.category_id == cat.id)
-        if status_filter:
-            stmt = stmt.where(SubcategoryModel.status == status_filter)
+        if status_filter and status_filter.upper() != "ALL":
+            stmt = stmt.where(SubcategoryModel.status == status_filter.upper())
         stmt = stmt.order_by(SubcategoryModel.sort_order.asc(), SubcategoryModel.name.asc())
 
         result = await self.db.execute(stmt)

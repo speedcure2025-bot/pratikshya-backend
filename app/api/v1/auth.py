@@ -56,6 +56,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.middleware import limiter
 from app.core.redis import get_redis
 from app.core.security import decode_token
@@ -569,6 +570,19 @@ async def oauth_facebook_login(
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     return await service.facebook_login(req, ip_address=client_ip, user_agent=user_agent)
+
+
+@router.get(
+    "/oauth/config",
+    status_code=status.HTTP_200_OK,
+    summary="Get public OAuth client configurations",
+)
+async def get_oauth_config():
+    """Return public client IDs for Google and Facebook OAuth."""
+    return {
+        "google_client_id": settings.GOOGLE_CLIENT_ID or "",
+        "facebook_app_id": settings.FACEBOOK_APP_ID or "",
+    }
 
 
 # ===========================================================================

@@ -69,37 +69,36 @@ def _make_rotating_handler(filename: str, level: int = logging.DEBUG) -> logging
     return handler
 
 
-def _make_stream_handler() -> logging.Handler:
-    """Return a stdout StreamHandler (used as the structlog sink)."""
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    return handler
-
-
 # ---------------------------------------------------------------------------
 # Public setup function — called once at application startup
 # ---------------------------------------------------------------------------
 
 def setup_logging(log_level: int = logging.INFO) -> None:
     """
-    Configure the root logger, named loggers, and structlog.
-
-    Call this once inside the FastAPI lifespan handler (``app/main.py``).
+    Configure the root logger, named loggers, and structlog to write strictly to logs/.
+    Console (stdout/stderr) handlers are removed.
     """
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # ── Remove any console (StreamHandler) handlers from root & uvicorn loggers ──
+    for name in (None, "uvicorn", "uvicorn.access", "uvicorn.error"):
+        lg = logging.getLogger(name)
+        for h in list(lg.handlers):
+            if isinstance(h, logging.StreamHandler):
+                lg.removeHandler(h)
 
     # ── Root / catch-all logger ────────────────────────────────────────────
     root = logging.getLogger()
     root.setLevel(log_level)
-    # Avoid adding handlers multiple times on hot-reload
-    if not root.handlers:
-        root.addHandler(_make_stream_handler())
-    root.addHandler(_make_rotating_handler("app.log", level=log_level))
 
-    # ── Error-only log (WARNING+) ──────────────────────────────────────────
-    error_handler = _make_rotating_handler("errors.log", level=logging.WARNING)
-    root.addHandler(error_handler)
+    # Avoid duplicate file handlers on hot-reload
+    has_app = any(isinstance(h, logging.handlers.RotatingFileHandler) and "app.log" in getattr(h, "baseFilename", "") for h in root.handlers)
+    if not has_app:
+        root.addHandler(_make_rotating_handler("app.log", level=log_level))
+
+    has_errors = any(isinstance(h, logging.handlers.RotatingFileHandler) and "errors.log" in getattr(h, "baseFilename", "") for h in root.handlers)
+    if not has_errors:
+        root.addHandler(_make_rotating_handler("errors.log", level=logging.WARNING))
 
     # ── Named loggers with dedicated log files ─────────────────────────────
     _named: dict[str, str] = {
@@ -111,14 +110,16 @@ def setup_logging(log_level: int = logging.INFO) -> None:
     for logger_name, filename in _named.items():
         lg = logging.getLogger(logger_name)
         lg.setLevel(log_level)
-        lg.addHandler(_make_rotating_handler(filename, level=log_level))
+        has_handler = any(isinstance(h, logging.handlers.RotatingFileHandler) and filename in getattr(h, "baseFilename", "") for h in lg.handlers)
+        if not has_handler:
+            lg.addHandler(_make_rotating_handler(filename, level=log_level))
         lg.propagate = True   # also flows to root (app.log + errors.log)
 
     # ── Third-party noise reduction ────────────────────────────────────────
     for noisy in ("sqlalchemy.engine", "httpx", "httpcore", "uvicorn.access"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
-    # ── structlog: structured JSON on stdout ───────────────────────────────
+    # ── structlog: delegate to stdlib logger factory ───────────────────────
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -130,7 +131,7 @@ def setup_logging(log_level: int = logging.INFO) -> None:
         ],
         wrapper_class=structlog.make_filtering_bound_logger(log_level),
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
 
