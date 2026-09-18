@@ -12,10 +12,10 @@ title PRATIKSHYA FASHON - Backend
 REM This script now lives inside the backend\ folder.
 REM %~dp0 resolves to that folder at runtime.
 set "BACKEND_DIR=%~dp0"
-REM Use the shared virtual environment at free-lancing\env
-set "VENV_DIR=C:\Users\HP\free-lancing\env"
-set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
-set "VENV_ACTIVATE=%VENV_DIR%\Scripts\activate.bat"
+REM Use the virtual environment inside this project folder
+set "VENV_DIR=%~dp0.venv"
+set "VENV_PYTHON=%~dp0.venv\Scripts\python.exe"
+set "VENV_ACTIVATE=%~dp0.venv\Scripts\activate.bat"
 
 if not exist "%BACKEND_DIR%app\main.py" (
     echo [ERROR] Backend entrypoint not found: "%BACKEND_DIR%app\main.py"
@@ -55,7 +55,7 @@ if errorlevel 1 (
 )
 
 REM --- Dependency check ---
-python -c "import fastapi, uvicorn" >nul 2>&1
+"%VENV_PYTHON%" -c "import fastapi, uvicorn" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Backend dependencies not installed - fastapi/uvicorn not found in venv.
     echo [ERROR] Run:  pip install -r requirements.txt
@@ -64,7 +64,7 @@ if errorlevel 1 (
 )
 
 REM --- Python 3.12 compatibility check (razorpay requires pkg_resources from setuptools) ---
-python -c "import pkg_resources" >nul 2>&1
+"%VENV_PYTHON%" -c "import pkg_resources" >nul 2>&1
 if not errorlevel 1 goto deps_ready
 echo [INFO] Installing setuptools for Python 3.12 compatibility...
 python -m pip install setuptools
@@ -91,7 +91,7 @@ if not exist ".env" (
 )
 
 REM --- PostgreSQL Pre-flight check ---
-python -c "import socket; s = socket.create_connection(('127.0.0.1', 5432), timeout=1); s.close()" >nul 2>&1
+"%VENV_PYTHON%" -c "import socket; s = socket.create_connection(('127.0.0.1', 5432), timeout=1); s.close()" >nul 2>&1
 if errorlevel 1 (
     echo [WARNING] ============================================================
     echo [WARNING] PostgreSQL is NOT running or unreachable on localhost:5432!
