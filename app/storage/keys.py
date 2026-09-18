@@ -285,7 +285,7 @@ def normalize_object_key(
         cleaned.append(segment)
 
     allowed = tuple(allowed_namespaces)
-    if cleaned[0] not in allowed:
+    if cleaned[0].lower() not in allowed:
         raise InvalidObjectKeyError(
             f"Object key namespace '{cleaned[0]}' is not served by the media API."
         )
