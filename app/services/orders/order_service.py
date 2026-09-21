@@ -438,15 +438,20 @@ class OrderService:
             price_lines.append(
                 {"product_id": line.product_id, "quantity": line.quantity, "unit_price": unit_price}
             )
+            raw_img = getattr(product, "image", None)
+            safe_img = None
+            if raw_img and not raw_img.startswith("data:"):
+                safe_img = raw_img[:500]
+
             order_items.append(
                 OrderItemModel(
                     id=_new_uuid(),
                     product_id=line.product_id,
-                    product_name=product.name or "",
-                    product_image=getattr(product, "image", None),
-                    sku=getattr(product, "sku", None),
-                    color=line.color,
-                    size=line.size,
+                    product_name=(product.name or "")[:255],
+                    product_image=safe_img,
+                    sku=(getattr(product, "sku", None) or "")[:100] or None,
+                    color=(line.color or "")[:100] or None,
+                    size=(line.size or "")[:50] or None,
                     unit_price=unit_price,
                     original_price=original_price,
                     quantity=line.quantity,
