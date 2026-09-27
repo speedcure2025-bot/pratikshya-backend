@@ -60,6 +60,10 @@ class PaymentSessionModel(Base):
         Integer, nullable=False,
         comment="Amount in paise (₹1 = 100 paise)"
     )
+    refunded_amount_paise: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=0,
+        comment="Cumulative refunded amount in paise"
+    )
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="INR"
     )
@@ -71,7 +75,7 @@ class PaymentSessionModel(Base):
     status: Mapped[str] = mapped_column(
         String(30), nullable=False, default="CREATED", index=True
     )
-    # CREATED | PENDING | PAID | FAILED | CANCELLED | EXPIRED
+    # CREATED | PENDING | AUTHORIZED | CAPTURED | PAID | FAILED | CANCELLED | EXPIRED | REFUND_PENDING | PARTIALLY_REFUNDED | REFUNDED
 
     # ── Timestamps ────────────────────────────────────────────────────────────
     paid_at: Mapped[Optional[datetime]] = mapped_column(

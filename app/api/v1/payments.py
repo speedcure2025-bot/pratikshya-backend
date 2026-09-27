@@ -39,11 +39,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_customer, get_db, get_optional_user
 from app.models.auth.user import UserModel
 from app.schemas.payments.payment import (
+    BatchReconcileRequest,
+    BatchReconcileResponse,
     CancelSessionRequest,
     CancelSessionResponse,
     CreatePaymentSessionRequest,
     GetSessionResponse,
     PaymentSessionData,
+    RefundPaymentRequest,
+    RefundPaymentResponse,
     VerifyPaymentRequest,
     VerifyPaymentResponse,
     WebhookAckResponse,
@@ -51,6 +55,52 @@ from app.schemas.payments.payment import (
 from app.services.payments.payment_service import PaymentService
 
 router = APIRouter(prefix="/payments", tags=["Payments & Gateway"])
+
+
+# ===========================================================================
+# POST /payments/session/{session_id}/refund — process refund
+# ===========================================================================
+
+@router.post(
+    "/session/{session_id}/refund",
+    response_model=RefundPaymentResponse,
+    summary="Process a refund for a payment session (Admin only)",
+    description=(
+        "Initiates or completes a full or partial refund for a captured payment.  \n\n"
+        "**Rules:**  \n"
+        "- Requires admin privileges.  \n"
+        "- Total cumulative refunded amount MUST NOT exceed total captured amount.  \n"
+        "- Idempotent — passing `idempotencyKey` prevents duplicate Razorpay refund creation.  \n"
+        "- Updates payment session & order statuses to `PARTIALLY_REFUNDED` or `REFUNDED`."
+    ),
+)
+async def refund_payment_session(
+    session_id: str,
+    req: RefundPaymentRequest,
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = PaymentService(db)
+
+    is_admin = bool(current_user and current_user.role in ("ADMIN", "SUPERADMIN"))
+
+    result = await service.refund_payment(
+        session_id=session_id,
+        amount_paise=req.amount_paise,
+        reason=req.reason,
+        idempotency_key=req.idempotency_key,
+        is_admin=is_admin,
+    )
+
+    return RefundPaymentResponse(
+        ok=result["ok"],
+        message=result["message"],
+        refundId=result.get("refund_id"),
+        amountPaise=result["amount_paise"],
+        status=result["status"],
+        orderPaymentStatus=result.get("order_payment_status"),
+    )
+
 
 
 # ===========================================================================
@@ -168,8 +218,41 @@ async def get_payment_session(
 
 
 # ===========================================================================
-# POST /payments/session/{sessionId}/cancel — cancel active session
+# GET /payments/session/{sessionId}/reconcile — network failure recovery
 # ===========================================================================
+
+@router.get(
+    "/session/{session_id}/reconcile",
+    summary="Reconcile payment session with Razorpay (network failure recovery)",
+    description=(
+        "Queries Razorpay to determine the real payment state for sessions that "
+        "may have been interrupted by a network failure, browser close, or server crash.  \\n\\n"
+        "**Critical scenario:** Customer pays at Razorpay → bank deducts money → "
+        "frontend callback never arrives (browser closed, internet dropped, etc.). "
+        "This endpoint recovers the correct state without charging the customer again.  \\n\\n"
+        "**Behaviour:**  \\n"
+        "- Terminal sessions (`PAID`, `FAILED`, `CANCELLED`) are returned immediately — no Razorpay API call.  \\n"
+        "- Non-terminal sessions → queries Razorpay `order.payments` API.  \\n"
+        "- If Razorpay confirms `captured` → session + order marked `PAID` (idempotent).  \\n"
+        "- If no captured payment → status unchanged; frontend should wait for webhook.  \\n\\n"
+        "**Safety:** Never creates new orders, never retries payment, never deducts inventory twice.  \\n\\n"
+        "**Ownership:** caller must own the session's order (authenticated customer or guest email)."
+    ),
+)
+async def reconcile_payment_session(
+    session_id: str,
+    guest_email: Optional[str] = Query(None, alias="guestEmail", max_length=255),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = PaymentService(db)
+    return await service.reconcile_session(
+        session_id=session_id,
+        owner_customer_id=current_user.id if current_user else None,
+        owner_guest_email=guest_email,
+    )
+
+
 
 @router.post(
     "/session/{session_id}/cancel",
@@ -314,3 +397,46 @@ async def razorpay_webhook(
         ok=result["ok"],
         message=result.get("message", "Webhook processed."),
     )
+
+
+# ===========================================================================
+# POST /payments/reconcile-batch — Batch payment reconciliation (Admin only)
+# ===========================================================================
+
+@router.post(
+    "/reconcile-batch",
+    response_model=BatchReconcileResponse,
+    summary="Batch payment reconciliation (Admin / Scheduler)",
+    description=(
+        "Audits and reconciles payment sessions against Razorpay.  \n\n"
+        "**Rules:**  \n"
+        "- Requires admin privileges.  \n"
+        "- Audits payment sessions to detect mismatches between Razorpay and database.  \n"
+        "- Safe auto-recovery for safe cases (CAPTURED -> PAID, REFUNDED -> REFUNDED).  \n"
+        "- Unsafe cases (DB PAID vs Razorpay FAILED/NONE, amount mismatch) are flagged for admin review without silent overwrites.  \n"
+        "- Idempotent — can be executed periodically by scheduled background jobs."
+    ),
+)
+async def reconcile_batch(
+    req: BatchReconcileRequest = BatchReconcileRequest(),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.core.exceptions import ForbiddenException
+
+    if not current_user or current_user.role not in ("ADMIN", "SUPERADMIN"):
+        raise ForbiddenException("Admin privileges required for payment reconciliation.")
+
+    service = PaymentService(db)
+    result = await service.reconcile_batch(
+        limit=req.limit,
+        session_ids=req.session_ids,
+    )
+
+    return BatchReconcileResponse(
+        totalAudited=result["scanned"],
+        reconciled=result["reconciled"],
+        flaggedForAdmin=result["flagged_for_admin"],
+        details=result["details"],
+    )
+

@@ -53,7 +53,10 @@ class OrderModel(Base):
 
     # ── Status ────────────────────────────────────────────────────────────────
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="ORDER_CONFIRMED", index=True)
-    payment_status: Mapped[str] = mapped_column(String(30), nullable=False, default="PENDING")
+    payment_status: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="PENDING_PAYMENT", index=True
+    )
+    # PENDING_PAYMENT | PAYMENT_PROCESSING | PAID | PAYMENT_FAILED | PAYMENT_CANCELLED | PAYMENT_EXPIRED | REFUND_PENDING | PARTIALLY_REFUNDED | REFUNDED
 
     # ── Pricing totals (rupees) ───────────────────────────────────────────────
     subtotal: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

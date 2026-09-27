@@ -422,6 +422,8 @@ class OrderService:
         required_qty: Dict[str, int] = {}
 
         for line in req.items:
+            if line.quantity <= 0:
+                raise BusinessLogicException("Line item quantity must be greater than zero.")
             product = products.get(line.product_id)
             if not product:
                 raise BusinessLogicException(f"Product '{line.product_id}' not found.")
@@ -503,7 +505,7 @@ class OrderService:
         # ── Canonical initial status ──────────────────────────────────────────
         is_cod = req.payment_method == "cod"
         status = "ORDER_CONFIRMED" if is_cod else "PENDING_PAYMENT"
-        payment_status = "PENDING"  # never PAID at creation — verification only
+        payment_status = "PENDING_PAYMENT"  # never PAID at creation — verification only
 
         if is_cod:
             timeline = [
@@ -843,7 +845,7 @@ class OrderService:
           2. Cancel any active payment session so a cancelled order can no
              longer be charged through a stale Razorpay modal.
         """
-        if order.payment_status in ("PENDING", "FAILED"):
+        if order.payment_status in ("PENDING", "PENDING_PAYMENT", "FAILED", "PAYMENT_FAILED"):
             await self._release_stock_reservation(order)
         await self._cancel_active_payment_sessions(order)
 

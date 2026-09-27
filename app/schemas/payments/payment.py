@@ -214,3 +214,59 @@ class WebhookAckResponse(BaseModel):
     """Minimal 200 OK response for Razorpay webhooks."""
     ok: bool = True
     message: str = "Webhook processed."
+
+
+class RefundPaymentRequest(BaseModel):
+    """
+    POST /payments/session/{sessionId}/refund
+    """
+    amount_paise: Optional[int] = Field(
+        None,
+        alias="amountPaise",
+        description="Amount in paise to refund. Omit for full refund.",
+    )
+    reason: Optional[str] = Field(None, description="Reason for refund")
+    idempotency_key: Optional[str] = Field(
+        None,
+        alias="idempotencyKey",
+        description="Client-supplied key for refund deduplication",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class RefundPaymentResponse(BaseModel):
+    ok: bool = True
+    message: str
+    refund_id: Optional[str] = Field(None, alias="refundId")
+    amount_paise: int = Field(..., alias="amountPaise")
+    status: str
+    order_payment_status: Optional[str] = Field(None, alias="orderPaymentStatus")
+
+    model_config = {"populate_by_name": True}
+
+
+class BatchReconcileRequest(BaseModel):
+    """
+    POST /payments/reconcile-batch
+    """
+    limit: int = Field(50, ge=1, le=500, description="Max session count to audit")
+    session_ids: Optional[list[str]] = Field(
+        None,
+        alias="sessionIds",
+        description="Optional list of specific session IDs to audit",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class BatchReconcileResponse(BaseModel):
+    ok: bool = True
+    total_audited: int = Field(..., alias="totalAudited")
+    reconciled: int
+    flagged_for_admin: int = Field(..., alias="flaggedForAdmin")
+    details: list[Dict[str, Any]]
+
+    model_config = {"populate_by_name": True}
+
+

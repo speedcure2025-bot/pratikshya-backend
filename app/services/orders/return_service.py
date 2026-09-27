@@ -77,12 +77,14 @@ def _timeline_event(event: str, actor_id: Optional[str] = None, note: Optional[s
     return entry
 
 
-async def _load_return(db: AsyncSession, return_id: str) -> ReturnOrderModel:
+async def _load_return(db: AsyncSession, return_id: str, lock: bool = False) -> ReturnOrderModel:
     stmt = (
         select(ReturnOrderModel)
         .where(ReturnOrderModel.id == return_id)
         .options(selectinload(ReturnOrderModel.items))
     )
+    if lock:
+        stmt = stmt.with_for_update()
     result = await db.execute(stmt)
     ret = result.scalars().first()
     if not ret:
@@ -306,7 +308,9 @@ class ReturnService:
 
     async def initiate_refund(self, return_id: str, actor_id: str) -> ReturnOrderModel:
         """POST /admin/returns/{id}/refund/initiate → REFUND_INITIATED."""
-        ret = await _load_return(self.db, return_id)
+        ret = await _load_return(self.db, return_id, lock=True)
+        if ret.status == "REFUND_INITIATED":
+            return ret
         if not _can_transition(ret.status, "REFUND_INITIATED"):
             raise BusinessLogicException(
                 f"Cannot initiate refund in status '{ret.status}'."
@@ -324,7 +328,9 @@ class ReturnService:
 
     async def complete_refund(self, return_id: str, actor_id: str) -> ReturnOrderModel:
         """POST /admin/returns/{id}/refund/complete → REFUNDED."""
-        ret = await _load_return(self.db, return_id)
+        ret = await _load_return(self.db, return_id, lock=True)
+        if ret.status == "REFUNDED":
+            return ret
         if not _can_transition(ret.status, "REFUNDED"):
             raise BusinessLogicException(
                 f"Cannot complete refund in status '{ret.status}'."
