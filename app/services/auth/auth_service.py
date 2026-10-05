@@ -308,10 +308,11 @@ class AuthService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> TokenResponse:
-        stmt = select(UserModel).where(UserModel.email == req.email)
+        email_clean = req.email.strip().lower()
+        stmt = select(UserModel).where(UserModel.email == email_clean)
         res = await self.db.execute(stmt)
         if res.scalars().first():
-            logger.warning("Customer registration conflict email=%s ip=%s", req.email, ip_address)
+            logger.warning("Customer registration conflict email=%s ip=%s", email_clean, ip_address)
             raise ConflictException(
                 "An account with this email already exists. Please sign in."
             )
@@ -326,7 +327,7 @@ class AuthService:
                 )
 
         new_user = UserModel(
-            email=req.email,
+            email=email_clean,
             phone=req.phone,
             full_name=req.full_name,
             hashed_password=hash_password(req.password),
@@ -365,7 +366,7 @@ class AuthService:
         if _is_phone(identifier):
             stmt = select(UserModel).where(UserModel.phone == identifier)
         else:
-            stmt = select(UserModel).where(UserModel.email == identifier)
+            stmt = select(UserModel).where(UserModel.email == identifier.lower())
 
         res = await self.db.execute(stmt)
         user = res.scalars().first()
@@ -374,7 +375,7 @@ class AuthService:
             logger.warning("Customer login failed — unknown identifier=%s ip=%s", identifier, ip_address)
             raise UnauthorizedException("That email or phone doesn't match our records.")
 
-        if user.status in ("SUSPENDED", "DEACTIVATED"):
+        if user.status != "ACTIVE":
             logger.warning("Customer login blocked status=%s user_id=%s ip=%s", user.status, user.id, ip_address)
             raise ForbiddenException(f"Account is {user.status.lower()}. Access denied.")
 
@@ -485,7 +486,8 @@ class AuthService:
                 if "SUPER_ADMIN" not in actor_roles:
                     raise ForbiddenException("Creating an admin account requires a SUPER_ADMIN session.")
 
-        email_stmt = select(UserModel).where(UserModel.email == req.email)
+        email_clean = req.email.strip().lower()
+        email_stmt = select(UserModel).where(UserModel.email == email_clean)
         email_res = await self.db.execute(email_stmt)
         if email_res.scalars().first():
             raise ConflictException("An account with this email already exists.")
@@ -497,7 +499,7 @@ class AuthService:
                 raise ConflictException("An account with this phone number already exists.")
 
         new_admin = UserModel(
-            email=req.email,
+            email=email_clean,
             phone=req.phone,
             full_name=req.full_name,
             hashed_password=hash_password(req.password),
@@ -540,7 +542,7 @@ class AuthService:
         if _is_phone(admin_identifier):
             stmt = select(UserModel).where(UserModel.phone == admin_identifier)
         else:
-            stmt = select(UserModel).where(UserModel.email == admin_identifier)
+            stmt = select(UserModel).where(UserModel.email == admin_identifier.lower())
 
         res = await self.db.execute(stmt)
         user = res.scalars().first()
@@ -596,7 +598,7 @@ class AuthService:
             )
             .where(
                 or_(
-                    UserModel.email == identifier,
+                    UserModel.email == identifier.lower(),
                     UserModel.phone == identifier,
                     EmployeeProfileModel.employee_code == identifier,
                 )

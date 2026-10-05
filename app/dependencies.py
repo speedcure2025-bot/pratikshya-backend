@@ -84,6 +84,10 @@ async def get_current_user_claims(
         logger.warning("Invalid or expired token presented")
         raise UnauthorizedException("Invalid or expired authentication token.")
 
+    if not payload.get("sub"):
+        logger.warning("Token presented without sub claim")
+        raise UnauthorizedException("Invalid token: subject missing.")
+
     # Reject refresh tokens presented to access-token-only endpoints
     if payload.get("token_type") != "access":
         logger.warning("Non-access token type used on protected endpoint")

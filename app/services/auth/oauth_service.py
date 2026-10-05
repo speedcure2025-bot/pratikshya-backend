@@ -229,7 +229,8 @@ class OAuthService:
 
         # 2. Check if a user with this email already exists (only when email is provided)
         if email:
-            user_stmt = select(UserModel).where(UserModel.email == email)
+            email_clean = email.strip().lower()
+            user_stmt = select(UserModel).where(UserModel.email == email_clean)
             user_res = await self.db.execute(user_stmt)
             existing_user = user_res.scalars().first()
 
@@ -243,7 +244,7 @@ class OAuthService:
                     user_id=existing_user.id,
                     provider=provider,
                     provider_user_id=provider_user_id,
-                    email=email,
+                    email=email_clean,
                     access_token=access_token,
                     expires_at=expires_at,
                 )
@@ -253,7 +254,7 @@ class OAuthService:
 
         # 3. Create brand-new user
         new_user = UserModel(
-            email=email,                    # May be None for Facebook users without email permission
+            email=email.strip().lower() if email else None,                    # May be None for Facebook users without email permission
             full_name=full_name,
             hashed_password=None,           # OAuth users have no password
             user_type="customer",
