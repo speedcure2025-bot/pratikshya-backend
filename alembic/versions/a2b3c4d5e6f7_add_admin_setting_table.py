@@ -22,44 +22,50 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "admin_setting",
-        sa.Column(
-            "id",
-            sa.String(length=64),
-            nullable=False,
-            comment="Setting section key, e.g. 'notifications', 'shipping'.",
-        ),
-        # JSONB on Postgres; TEXT on SQLite (test / local dev without PG)
-        sa.Column(
-            "value",
-            postgresql.JSONB(astext_type=sa.Text()).with_variant(sa.Text(), "sqlite"),
-            nullable=False,
-            server_default="{}",
-            comment="Section configuration stored as JSONB.",
-        ),
-        sa.Column(
-            "updated_by",
-            sa.String(length=36),
-            nullable=True,
-            comment="User id of the last editor.",
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        # Base columns expected by SQLAlchemy ORM for any model inheriting Base
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_admin_setting_id"), "admin_setting", ["id"], unique=False)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    tables = inspector.get_table_names()
+    if "admin_setting" not in tables:
+        op.create_table(
+            "admin_setting",
+            sa.Column(
+                "id",
+                sa.String(length=64),
+                nullable=False,
+                comment="Setting section key, e.g. 'notifications', 'shipping'.",
+            ),
+            # JSONB on Postgres; TEXT on SQLite (test / local dev without PG)
+            sa.Column(
+                "value",
+                postgresql.JSONB(astext_type=sa.Text()).with_variant(sa.Text(), "sqlite"),
+                nullable=False,
+                server_default="{}",
+                comment="Section configuration stored as JSONB.",
+            ),
+            sa.Column(
+                "updated_by",
+                sa.String(length=36),
+                nullable=True,
+                comment="User id of the last editor.",
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.text("now()"),
+            ),
+            # Base columns expected by SQLAlchemy ORM for any model inheriting Base
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.text("now()"),
+            ),
+            sa.PrimaryKeyConstraint("id"),
+        )
+    indexes = [idx["name"] for idx in inspector.get_indexes("admin_setting")] if "admin_setting" in (tables if "admin_setting" in tables else inspector.get_table_names()) else []
+    if "ix_admin_setting_id" not in indexes:
+        op.create_index(op.f("ix_admin_setting_id"), "admin_setting", ["id"], unique=False)
 
 
 def downgrade() -> None:

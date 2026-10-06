@@ -74,9 +74,12 @@ class CreatePaymentSessionRequest(BaseModel):
     @field_validator("payment_method")
     @classmethod
     def validate_payment_method(cls, v: str) -> str:
-        allowed = {"upi", "card", "netbanking", "cod"}
+        allowed = {"upi", "card", "netbanking"}
         if v not in allowed:
-            raise ValueError(f"payment_method must be one of {allowed}")
+            raise ValueError(
+                f"payment_method must be one of {allowed}. "
+                "COD orders do not use a payment session."
+            )
         return v
 
     @field_validator("guest_email")

@@ -156,6 +156,8 @@ def _timeline_event(event: str, actor_id: Optional[str] = None, note: Optional[s
 
 
 def _compute_shipping(subtotal_after_coupon: int, delivery_method: str) -> int:
+    if delivery_method == "normal":
+        return 0  # normal delivery is always free
     if delivery_method == "express":
         return EXPRESS_SHIPPING_FEE  # express is never free
     return 0 if subtotal_after_coupon >= FREE_SHIPPING_THRESHOLD else FLAT_SHIPPING_FEE

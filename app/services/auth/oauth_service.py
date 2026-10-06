@@ -64,7 +64,7 @@ class OAuthService:
                 token,
                 request_obj,
                 settings.GOOGLE_CLIENT_ID,
-                clock_skew_in_seconds=10,
+                clock_skew_in_seconds=120,
             )
             return payload
         except ValueError as exc:

@@ -295,7 +295,9 @@ class CartService:
         # and the placed order can never disagree: express carries a flat
         # premium at every order value (never free); standard is complimentary
         # at/above the free-shipping threshold and ₹99 below it.
-        if delivery_method == "express":
+        if delivery_method == "normal":
+            shipping = 0  # normal delivery is always free
+        elif delivery_method == "express":
             shipping = EXPRESS_SHIPPING_FEE
         elif delivery_method == "free":
             shipping = 0
@@ -609,12 +611,29 @@ class CartService:
         payment_method: str = "online",
     ) -> CartTotalsResponse:
         """GET /cart/totals — compute and return only the totals breakdown."""
-        cart = await self._get_or_create_cart(customer_id)
-        items, coupon_valid = await self._restore_cart(cart)
-        cart_resp = await self._build_cart_response(
-            cart, items, coupon_valid, delivery_method, payment_method
-        )
+        # Reuse get_cart so the same restore logic and cache path is used.
+        # This guarantees totals are always consistent with what GET /cart returns.
+        cart_resp = await self.get_cart(customer_id)
+
+        # Re-apply delivery/payment method on top of the cached subtotals.
         t = cart_resp.totals
+        discounted_subtotal = t.subtotal - t.coupon_discount
+        if delivery_method == "normal":
+            shipping = 0  # normal delivery is always free
+        elif delivery_method == "express":
+            shipping = EXPRESS_SHIPPING_FEE
+        elif delivery_method == "free":
+            shipping = 0
+        else:
+            shipping = (
+                0 if discounted_subtotal >= FREE_SHIPPING_THRESHOLD else FLAT_SHIPPING_FEE
+            )
+        cod_fee = COD_FEE if payment_method == "cod" else 0
+        total = max(0, discounted_subtotal + shipping + cod_fee)
+        saved = t.product_discount + t.coupon_discount + (
+            FLAT_SHIPPING_FEE if shipping == 0 and t.subtotal > 0 else 0
+        )
+
         return CartTotalsResponse(
             ok=True,
             subtotal=t.subtotal,
@@ -622,8 +641,8 @@ class CartService:
             coupon_discount=t.coupon_discount,
             coupon_code=t.coupon_code,
             offer_id=t.offer_id,
-            shipping=t.shipping,
-            cod_fee=t.cod_fee,
-            total=t.total,
-            saved=t.saved,
+            shipping=shipping,
+            cod_fee=cod_fee,
+            total=total,
+            saved=saved,
         )

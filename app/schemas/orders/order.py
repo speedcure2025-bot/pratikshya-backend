@@ -354,7 +354,7 @@ class PlaceOrderRequest(BaseModel):
     items: List[PlaceOrderItem]
     customer: CustomerSnapshot
     address: AddressSnapshot
-    delivery_method: str = Field("standard", alias="deliveryMethod")
+    delivery_method: str = Field("normal", alias="deliveryMethod")
     payment_method: str = Field(..., alias="paymentMethod")
     coupon_code: Optional[str] = Field(None, alias="couponCode", max_length=50)
     customer_note: Optional[str] = Field(None, alias="customerNote")
@@ -369,7 +369,7 @@ class PlaceOrderRequest(BaseModel):
     @field_validator("delivery_method")
     @classmethod
     def _delivery_method_allowed(cls, v: str) -> str:
-        allowed = {"standard", "express"}
+        allowed = {"normal", "standard", "express"}
         if v not in allowed:
             raise ValueError(f"delivery_method must be one of {sorted(allowed)}")
         return v

@@ -36,6 +36,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.dependencies import get_current_customer, get_db, get_optional_user
 from app.models.auth.user import UserModel
 from app.schemas.payments.payment import (
@@ -53,6 +54,8 @@ from app.schemas.payments.payment import (
     WebhookAckResponse,
 )
 from app.services.payments.payment_service import PaymentService
+
+logger = get_logger("app.payments.api")
 
 router = APIRouter(prefix="/payments", tags=["Payments & Gateway"])
 
@@ -80,16 +83,24 @@ async def refund_payment_session(
     current_user: Optional[UserModel] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
-    service = PaymentService(db)
-
     is_admin = bool(current_user and current_user.role in ("ADMIN", "SUPERADMIN"))
+    logger.info(
+        "API POST /payments/session/%s/refund initiated user_id=%s is_admin=%s amount_paise=%s reason=%s",
+        session_id, current_user.id if current_user else None, is_admin, req.amount_paise, req.reason,
+    )
 
+    service = PaymentService(db)
     result = await service.refund_payment(
         session_id=session_id,
         amount_paise=req.amount_paise,
         reason=req.reason,
         idempotency_key=req.idempotency_key,
         is_admin=is_admin,
+    )
+
+    logger.info(
+        "API POST /payments/session/%s/refund completed ok=%s refund_id=%s status=%s",
+        session_id, result.get("ok"), result.get("refund_id"), result.get("status"),
     )
 
     return RefundPaymentResponse(
@@ -139,6 +150,11 @@ async def create_payment_session(
     The order must already exist (pending order first). The amount is the
     order's authoritative server-computed total. COD is rejected here.
     """
+    logger.info(
+        "API POST /payments/session initiated order_id=%s payment_method=%s idempotency_key=%s customer_id=%s guest_email=%s",
+        req.order_id, req.payment_method, req.idempotency_key, current_user.id if current_user else None, req.guest_email,
+    )
+
     service = PaymentService(db)
 
     # Prefill comes only from the authenticated identity — never from the
@@ -162,6 +178,11 @@ async def create_payment_session(
         customer_name=customer_name,
         owner_customer_id=current_user.id if current_user else None,
         owner_guest_email=req.guest_email,
+    )
+
+    logger.info(
+        "API POST /payments/session completed session_id=%s status=%s razorpay_order_id=%s",
+        result.get("session_id"), result.get("status"), result.get("razorpay_order_id"),
     )
 
     return result
@@ -188,6 +209,11 @@ async def get_payment_session(
     current_user: Optional[UserModel] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info(
+        "API GET /payments/session/%s requested customer_id=%s guest_email=%s",
+        session_id, current_user.id if current_user else None, guest_email,
+    )
+
     service = PaymentService(db)
     session = await service.get_session(
         session_id,
@@ -212,6 +238,11 @@ async def get_payment_session(
         failureCode=session.failure_code,
         createdAt=session.created_at,
         updatedAt=session.updated_at,
+    )
+
+    logger.info(
+        "API GET /payments/session/%s status retrieved status=%s payment_method=%s",
+        session_id, session.status, session.payment_method,
     )
 
     return GetSessionResponse(session=session_data)
@@ -245,13 +276,24 @@ async def reconcile_payment_session(
     current_user: Optional[UserModel] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info(
+        "API GET /payments/session/%s/reconcile requested customer_id=%s guest_email=%s",
+        session_id, current_user.id if current_user else None, guest_email,
+    )
+
     service = PaymentService(db)
-    return await service.reconcile_session(
+    result = await service.reconcile_session(
         session_id=session_id,
         owner_customer_id=current_user.id if current_user else None,
         owner_guest_email=guest_email,
     )
 
+    logger.info(
+        "API GET /payments/session/%s/reconcile completed reconciled=%s session_status=%s",
+        session_id, result.get("reconciled"), result.get("session_status"),
+    )
+
+    return result
 
 
 @router.post(
@@ -272,6 +314,11 @@ async def cancel_payment_session(
     current_user: Optional[UserModel] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info(
+        "API POST /payments/session/%s/cancel requested reason=%s customer_id=%s guest_email=%s",
+        session_id, req.reason, current_user.id if current_user else None, req.guest_email,
+    )
+
     service = PaymentService(db)
 
     session = await service.cancel_session(
@@ -279,6 +326,11 @@ async def cancel_payment_session(
         reason=req.reason,
         owner_customer_id=current_user.id if current_user else None,
         owner_guest_email=req.guest_email,
+    )
+
+    logger.info(
+        "API POST /payments/session/%s/cancel completed status=%s",
+        session_id, session.status,
     )
 
     return CancelSessionResponse(
@@ -317,6 +369,11 @@ async def verify_payment(
     current_user: Optional[UserModel] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info(
+        "API POST /payments/verify initiated razorpay_order_id=%s razorpay_payment_id=%s customer_id=%s guest_email=%s",
+        req.razorpay_order_id, req.razorpay_payment_id, current_user.id if current_user else None, req.guest_email,
+    )
+
     service = PaymentService(db)
     result = await service.verify_payment(
         razorpay_order_id=req.razorpay_order_id,
@@ -324,6 +381,11 @@ async def verify_payment(
         razorpay_signature=req.razorpay_signature,
         owner_customer_id=current_user.id if current_user else None,
         owner_guest_email=req.guest_email,
+    )
+
+    logger.info(
+        "API POST /payments/verify completed ok=%s payment_status=%s order_id=%s order_status=%s",
+        result.get("ok"), result.get("payment_status"), result.get("order_id"), result.get("order_status"),
     )
 
     return VerifyPaymentResponse(
@@ -378,7 +440,13 @@ async def razorpay_webhook(
     """
     from app.core.exceptions import ForbiddenException
 
+    logger.info(
+        "API POST /payments/webhook received signature_header_present=%s client_host=%s",
+        bool(x_razorpay_signature), request.client.host if request.client else None,
+    )
+
     if not x_razorpay_signature:
+        logger.warning("API POST /payments/webhook rejected: missing X-Razorpay-Signature header")
         raise ForbiddenException(
             "Missing X-Razorpay-Signature header. "
             "This endpoint only accepts signed requests from Razorpay."
@@ -391,6 +459,11 @@ async def razorpay_webhook(
     result = await service.handle_webhook(
         raw_body=raw_body,
         signature=x_razorpay_signature,
+    )
+
+    logger.info(
+        "API POST /payments/webhook processed ok=%s message=%s",
+        result.get("ok"), result.get("message"),
     )
 
     return WebhookAckResponse(
@@ -424,13 +497,25 @@ async def reconcile_batch(
 ):
     from app.core.exceptions import ForbiddenException
 
+    logger.info(
+        "API POST /payments/reconcile-batch requested limit=%s session_ids_count=%s user_id=%s role=%s",
+        req.limit, len(req.session_ids) if req.session_ids else 0, current_user.id if current_user else None, current_user.role if current_user else None,
+    )
+
     if not current_user or current_user.role not in ("ADMIN", "SUPERADMIN"):
+        logger.warning("API POST /payments/reconcile-batch rejected: non-admin user")
         raise ForbiddenException("Admin privileges required for payment reconciliation.")
 
     service = PaymentService(db)
     result = await service.reconcile_batch(
         limit=req.limit,
         session_ids=req.session_ids,
+        is_admin=True,  # already verified above
+    )
+
+    logger.info(
+        "API POST /payments/reconcile-batch completed scanned=%s reconciled=%s flagged_for_admin=%s",
+        result.get("scanned"), result.get("reconciled"), result.get("flagged_for_admin"),
     )
 
     return BatchReconcileResponse(

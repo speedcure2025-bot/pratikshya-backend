@@ -143,11 +143,20 @@ def _verify_payment_signature(
     timing-based oracle attacks.
     """
     if not razorpay_order_id or not razorpay_payment_id or not razorpay_signature:
+        logger.warning(
+            "Payment signature verification aborted: missing arguments razorpay_order_id=%s razorpay_payment_id=%s signature_present=%s",
+            razorpay_order_id, razorpay_payment_id, bool(razorpay_signature),
+        )
         return False
 
     key_secret = settings.RAZORPAY_KEY_SECRET
     if not key_secret:
         raise RuntimeError("RAZORPAY_KEY_SECRET is not configured.")
+
+    logger.info(
+        "Verifying Razorpay payment callback signature razorpay_order_id=%s razorpay_payment_id=%s",
+        razorpay_order_id, razorpay_payment_id,
+    )
 
     message = f"{razorpay_order_id}|{razorpay_payment_id}".encode("utf-8")
     expected = hmac.new(
@@ -156,7 +165,12 @@ def _verify_payment_signature(
         hashlib.sha256,
     ).hexdigest()
 
-    return hmac.compare_digest(expected, razorpay_signature)
+    is_valid = hmac.compare_digest(expected, razorpay_signature)
+    logger.info(
+        "Payment signature verification result valid=%s razorpay_order_id=%s razorpay_payment_id=%s",
+        is_valid, razorpay_order_id, razorpay_payment_id,
+    )
+    return is_valid
 
 
 def _verify_webhook_signature(raw_body: bytes, signature: str) -> bool:
@@ -173,13 +187,17 @@ def _verify_webhook_signature(raw_body: bytes, signature: str) -> bool:
     if not webhook_secret:
         raise RuntimeError("RAZORPAY_WEBHOOK_SECRET is not configured.")
 
+    logger.info("Verifying webhook HMAC-SHA256 signature payload_size_bytes=%s", len(raw_body))
+
     expected = hmac.new(
         webhook_secret.encode("utf-8"),
         raw_body,
         hashlib.sha256,
     ).hexdigest()
 
-    return hmac.compare_digest(expected, signature)
+    is_valid = hmac.compare_digest(expected, signature)
+    logger.info("Webhook signature verification result valid=%s", is_valid)
+    return is_valid
 
 
 # ---------------------------------------------------------------------------
@@ -837,12 +855,15 @@ class PaymentService:
         # ── Amount cross-check via Razorpay fetch API ─────────────────────────
         # This is an extra security layer — we verify the amount Razorpay
         # recorded matches what we expect to charge.
+        actual_payment_method: Optional[str] = None
         try:
             client = _build_razorpay_client()
             loop = asyncio.get_running_loop()
             payment_details = await loop.run_in_executor(
                 None, lambda: client.payment.fetch(razorpay_payment_id)
             )
+            # Capture the actual method used (user may have switched inside modal)
+            actual_payment_method = payment_details.get("method") or None
             fetched_rzp_order_id = payment_details.get("order_id")
             if fetched_rzp_order_id and fetched_rzp_order_id != razorpay_order_id:
                 session.status = "FAILED"
@@ -894,6 +915,13 @@ class PaymentService:
         session.razorpay_payment_id = razorpay_payment_id
         session.razorpay_signature = razorpay_signature
         session.paid_at = now
+
+        # Update to the actual method used inside the Razorpay modal
+        # (user may have switched e.g. from UPI to netbanking)
+        if actual_payment_method:
+            session.payment_method = actual_payment_method
+            order.payment_method = actual_payment_method
+
         await self.db.flush()
 
         logger.info(
