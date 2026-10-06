@@ -292,12 +292,21 @@ class EmployeeService:
 
         custom_requested = (req.permissionMode or "").lower() == "custom"
         if custom_requested or requested:
-            # Custom mode replaces role defaults, including an empty list
-            # (no extra grants). A non-empty permissions[] without the flag
-            # is still stored as custom so the capability picker is not
-            # discarded. Do not fall back to the full ADMIN catalogue.
+            # Merge the role's built-in base set so role-granted permissions
+            # (e.g. analytics.view for ADMIN) are never silently stripped when
+            # a creator supplies a partial custom list. resolve_stored_grants
+            # with permission_mode="role" returns the same set the user would
+            # have had without custom mode — we union rather than replace.
+            from app.core.rbac import resolve_stored_grants
+            role_base = resolve_stored_grants(
+                account_level=target_level,
+                roles=role_names,
+                permission_mode="role",
+                custom_permissions=None,
+                role_permission_codes=[],
+            )
             user.permission_mode = "custom"
-            user.custom_permissions = requested
+            user.custom_permissions = sorted(role_base | set(requested))
         # Audit BEFORE commit so the diary row rides the same transaction.
         # Credential material is deliberately absent (the temp password only
         # ever exists in the create response).

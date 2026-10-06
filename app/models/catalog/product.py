@@ -15,6 +15,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -140,4 +141,5 @@ class ProductModel(Base):
         Index("ix_catalog_product_slug", "slug"),
         Index("ix_catalog_product_sku", "sku"),
         Index("ix_catalog_product_assigned_employee", "assigned_employee_id"),
+        UniqueConstraint("product_id", name="uq_catalog_product_product_id"),
     )

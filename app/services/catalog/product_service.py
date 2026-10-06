@@ -48,6 +48,7 @@ from app.models.catalog.category import CategoryModel, SubcategoryModel
 from app.models.catalog.collection import CollectionModel
 from app.models.catalog.product import ProductModel
 from app.models.employee.employee import EmployeeProfileModel
+from app.models.media.product_media import ProductMediaModel
 from app.services.media.product_media_records import (
     gallery_urls,
     primary_item,
@@ -659,7 +660,7 @@ class ProductService:
             image=media_view.get("image") or resolve_product_image_reference(p.image),
             hoverImage=resolve_product_image_reference(p.hover_image),
             additionalImages=media_view.get("additionalImages")
-            if media_view
+            if media_view.get("additionalImages") is not None
             else resolve_product_image_list(p.additional_images),
             primaryMediaId=media_view.get("primaryMediaId", p.primary_media_id),
             href=f"/products/{p.slug or p.id}",
@@ -768,7 +769,7 @@ class ProductService:
             image=media_view.get("image") or resolve_product_image_reference(p.image),
             hoverImage=resolve_product_image_reference(p.hover_image),
             additionalImages=media_view.get("additionalImages")
-            if media_view
+            if media_view.get("additionalImages") is not None
             else resolve_product_image_list(p.additional_images),
             createdBy=p.created_by,
             createdAt=p.created_at.isoformat() if p.created_at else None,
@@ -2011,6 +2012,36 @@ class ProductService:
         await self.invalidate_product_cache(p.id, p.slug)
         return await self._to_employee_current(p)
 
+    async def create_employee_draft(
+        self,
+        req: EmployeeProductUpdateRequest,
+        actor: str,
+        employee_id: str,
+    ) -> EmployeeProduct:
+        """
+        POST /employee/products/draft — same catalogue create as admin draft,
+        with a server-allocated ID, then assigned to the creating employee so
+        PATCH and submit-review keep working on the whitelist path.
+        """
+        payload = req.model_dump(exclude_unset=True, by_alias=True)
+        name = str(payload.get("name") or "").strip()
+        category = str(payload.get("category") or "").strip()
+        if not name:
+            raise BusinessLogicException("Product name is required.")
+        if not category:
+            raise BusinessLogicException("Category is required.")
+
+        next_id = await self.get_next_id(category)
+        draft_req = ProductDraftRequest(id=next_id, **payload)
+        await self.create_draft(draft_req, actor=actor)
+
+        p = await self._get_or_404(next_id)
+        p.assigned_employee_id = employee_id
+        p.updated_by = actor
+        await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
+        return await self._to_employee_current(p)
+
     # ── Assign employee ───────────────────────────────────────────────────────
 
     async def assign_employee(
@@ -2427,6 +2458,27 @@ class ProductService:
         )
         self.db.add(dup)
         await self.db.flush()
+
+        # Copy registered media associations from the original product.
+        # Legacy authored columns (image, hover_image, etc.) are already copied
+        # above; this covers the Phase 7 source-of-truth rows in media_product_media.
+        original_media = (
+            await self.db.execute(
+                select(ProductMediaModel).where(ProductMediaModel.product_id == p.id)
+            )
+        ).scalars().all()
+        for m in original_media:
+            self.db.add(ProductMediaModel(
+                product_id=dup.id,
+                media_id=m.media_id,
+                role=m.role,
+                sort_order=m.sort_order,
+                is_primary=m.is_primary,
+                assigned_by=actor,
+            ))
+        if original_media:
+            await self.db.flush()
+
         return self._to_admin(dup)
 
     # ── Bulk update ───────────────────────────────────────────────────────────

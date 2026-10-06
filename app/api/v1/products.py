@@ -38,6 +38,7 @@ URL mapping (API_CONTRACT.md → implementation):
 
   Employee
   ─────────────────────────────────────────────────────────────────────────────
+  POST /employee/products/draft                 ← create draft (server-allocated id, assigned to caller)
   GET  /employee/products/{id}                  ← employee-safe product projection
   PATCH /employee/products/{id}                 ← whitelisted product-content patch
 
@@ -746,6 +747,37 @@ async def admin_clear_review_flags(
 # ===========================================================================
 # EMPLOYEE — Products
 # ===========================================================================
+
+@router.post(
+    "/employee/products/draft",
+    response_model=SingleEmployeeProductResponse,
+    summary="Employee — create a DRAFT assigned to the caller",
+    description=(
+        "Authorization: `products.manage`.  \n"
+        "Creates a catalogue DRAFT with a server-allocated Product ID (same "
+        "allocator as admin), then assigns it to the creating employee so "
+        "the existing PATCH and submit-review rules apply. Body is the "
+        "employee content whitelist (name and category required)."
+    ),
+    status_code=status.HTTP_201_CREATED,
+)
+async def employee_create_draft(
+    req: EmployeeProductUpdateRequest,
+    current_user: UserModel = Depends(get_current_employee),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_permission_for_user(current_user, db, "products.manage")
+    employee_code = await _employee_code_for_user(current_user, db)
+    if not employee_code:
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Employee profile is required for product workflow actions.")
+
+    service = ProductService(db)
+    product = await service.create_employee_draft(
+        req, actor=employee_code, employee_id=employee_code
+    )
+    return SingleEmployeeProductResponse(product=product)
+
 
 @router.get(
     "/employee/products/{id}",

@@ -19,6 +19,16 @@ from app.storage.keys import ALLOWED_NAMESPACES
 
 
 # ---------------------------------------------------------------------------
+# Media asset declared vocabularies
+# ---------------------------------------------------------------------------
+
+#: Declared status values for MediaAssetModel.status
+MEDIA_ASSET_STATUS_UPLOADED = "uploaded"
+
+#: Declared scope values for MediaAssetModel.scope
+MEDIA_ASSET_SCOPE_PRODUCT = "product"
+
+# ---------------------------------------------------------------------------
 # Declared vocabularies (plan §24 step 9 — API-085/086/125/126/132/133/140)
 # ---------------------------------------------------------------------------
 #
@@ -61,7 +71,7 @@ PRODUCT_MEDIA_ROLE_VALUES: Tuple[str, ...] = (
 
 #: What `POST /media/register` stores when the caller names no role. This is
 #: the pre-existing `Form(...)` / column default and is deliberately unchanged.
-DEFAULT_PRODUCT_MEDIA_ROLE = "gallery"
+DEFAULT_PRODUCT_MEDIA_ROLE = "GALLERY"
 
 #: Lookup set for the case-insensitive membership test.
 _PRODUCT_MEDIA_ROLE_LOOKUP = {value.casefold() for value in PRODUCT_MEDIA_ROLE_VALUES}
@@ -296,7 +306,7 @@ class RegisteredProductMediaItem(BaseModel):
     alt_text: Optional[str] = Field(None, alias="altText")
     file_size: int = Field(0, alias="fileSize")
     status: str = ""
-    role: str = "gallery"
+    role: str = "GALLERY"
     sort_order: int = Field(0, alias="sortOrder")
     is_primary: bool = Field(False, alias="isPrimary")
     assigned_by: Optional[str] = Field(None, alias="assignedBy")

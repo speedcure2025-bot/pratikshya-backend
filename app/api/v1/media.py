@@ -65,6 +65,8 @@ from app.storage import get_storage_provider
 from sqlalchemy import update
 from app.schemas.media.media import (
     DEFAULT_PRODUCT_MEDIA_ROLE,
+    MEDIA_ASSET_SCOPE_PRODUCT,
+    MEDIA_ASSET_STATUS_UPLOADED,
     MEDIA_UPLOAD_NAMESPACES,
     PRODUCT_MEDIA_ROLE_VALUES,
     MediaAssetListResponse,
@@ -384,10 +386,30 @@ async def upload_media_object(
 async def upload_product_media_object(
     product_id: str,
     file: UploadFile = File(..., description="Image file to store"),
+    role: str = Form(
+        DEFAULT_PRODUCT_MEDIA_ROLE,
+        description=(
+            "Product-media role. Closed vocabulary: "
+            + ", ".join(PRODUCT_MEDIA_ROLE_VALUES)
+            + f". Defaults to '{DEFAULT_PRODUCT_MEDIA_ROLE}'."
+        ),
+    ),
+    is_primary: bool = Form(False),
+    sort_order: int = Form(0),
+    title: Optional[str] = Form(None),
+    alt_text: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_admin),
 ):
-    """Upload scoped to one product — the key namespace cannot be spoofed."""
+    """
+    Upload scoped to one product AND auto-register the asset in one request.
+
+    This is the preferred upload path for product media: it stores the object,
+    creates the MediaAssetModel row, and creates the ProductMediaModel
+    association atomically — no separate POST /media/register call required.
+    The generic POST /media/objects path still exists for non-product namespaces
+    but requires a manual register step afterwards.
+    """
     await require_admin_permission(current_user, db, "media.upload")
 
     result = await db.execute(
@@ -395,6 +417,11 @@ async def upload_product_media_object(
     )
     if result.scalars().first() is None:
         raise NotFoundException(f"Product '{product_id}' not found.")
+
+    try:
+        role = coerce_product_media_role(role)
+    except ValueError as exc:
+        raise BusinessLogicException(str(exc)) from exc
 
     upload = UploadService(db)
     try:
@@ -411,6 +438,75 @@ async def upload_product_media_object(
         raise ConflictException(str(exc)) from exc
     except InvalidObjectKeyError as exc:
         raise _invalid_key(str(exc)) from exc
+
+    # Auto-register: create the MediaAssetModel row and ProductMediaModel
+    # association in the same request so no DB record is ever left orphaned.
+    media = _get_media_service(db)
+    key = stored.key
+    try:
+        meta = await run_in_threadpool(media.object_metadata, key)
+    except ObjectNotFoundError as exc:
+        raise NotFoundException("Uploaded object not found immediately after store.") from exc
+
+    asset_row = (
+        await db.execute(select(MediaAssetModel).where(MediaAssetModel.object_key == key))
+    ).scalars().first()
+    if asset_row is None:
+        asset_row = MediaAssetModel(
+            object_key=key,
+            storage_provider=settings.storage_provider_name,
+            media_type="image",
+            mime_type=meta.content_type,
+            original_filename=file.filename or key.rsplit("/", 1)[-1],
+            file_size=meta.size,
+            checksum_sha256=meta.checksum_sha256,
+            status=MEDIA_ASSET_STATUS_UPLOADED,
+            scope=MEDIA_ASSET_SCOPE_PRODUCT,
+            uploaded_by=current_user.id,
+            title=title,
+            alt_text=alt_text,
+        )
+        db.add(asset_row)
+        await db.flush()
+
+    if is_primary:
+        await db.execute(
+            update(ProductMediaModel)
+            .where(ProductMediaModel.product_id == product_id)
+            .values(is_primary=False)
+        )
+    mapping = (
+        await db.execute(
+            select(ProductMediaModel).where(
+                ProductMediaModel.product_id == product_id,
+                ProductMediaModel.media_id == asset_row.id,
+            )
+        )
+    ).scalars().first()
+    if mapping is None:
+        mapping = ProductMediaModel(
+            product_id=product_id,
+            media_id=asset_row.id,
+            role=role,
+            sort_order=sort_order,
+            is_primary=is_primary,
+            assigned_by=current_user.id,
+        )
+        db.add(mapping)
+    else:
+        mapping.role, mapping.sort_order, mapping.is_primary = role, sort_order, is_primary
+
+    await db.commit()
+
+    try:
+        from app.services.catalog.product_service import ProductService
+        product = (
+            await db.execute(select(ProductModel).where(ProductModel.id == product_id))
+        ).scalars().first()
+        if product:
+            await ProductService(db).invalidate_product_cache(product.id, product.slug)
+    except Exception:
+        logger.warning("Product media cache invalidation skipped after upload", exc_info=True)
 
     return {"ok": True, "object": stored, "status": 201}
 
@@ -465,7 +561,7 @@ async def register_media_object(
     if row is None:
         row = MediaAssetModel(object_key=key, storage_provider=settings.storage_provider_name,
             media_type="image", mime_type=meta.content_type, original_filename=key.rsplit("/",1)[-1],
-            file_size=meta.size, checksum_sha256=meta.checksum_sha256, status="uploaded", scope="product",
+            file_size=meta.size, checksum_sha256=meta.checksum_sha256, status=MEDIA_ASSET_STATUS_UPLOADED, scope=MEDIA_ASSET_SCOPE_PRODUCT,
             uploaded_by=current_user.id, title=title, alt_text=alt_text)
         db.add(row); await db.flush()
     mapping = None
@@ -487,7 +583,7 @@ async def register_media_object(
 
             await ProductService(db).invalidate_product_cache(product.id, product.slug)
         except Exception:  # cache maintenance must never fail a committed write
-            logger.debug("Product media cache invalidation skipped", exc_info=True)
+            logger.warning("Product media cache invalidation skipped", exc_info=True)
     else: await db.commit()
     return {
         "ok": True,

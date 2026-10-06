@@ -58,7 +58,7 @@ def serialise_assignment(
         "altText": asset.alt_text,
         "fileSize": asset.file_size,
         "status": asset.status,
-        "role": mapping.role or "gallery",
+        "role": mapping.role or "GALLERY",
         "sortOrder": mapping.sort_order or 0,
         "isPrimary": bool(mapping.is_primary),
         "assignedBy": mapping.assigned_by,

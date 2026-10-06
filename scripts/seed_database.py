@@ -140,6 +140,25 @@ async def main() -> None:
 
             await db.commit()
 
+        # 5. Link ADMIN role to any admin-level user missing it
+        admin_role = role_map.get("ADMIN")
+        if admin_role:
+            admin_level_stmt = select(UserModel).where(UserModel.account_level == "ADMIN")
+            admin_level_res = await db.execute(admin_level_stmt)
+            admin_level_users = admin_level_res.scalars().all()
+
+            for admin_user in admin_level_users:
+                ur_stmt = select(UserRoleModel).where(
+                    UserRoleModel.user_id == admin_user.id,
+                    UserRoleModel.role_id == admin_role.id,
+                )
+                ur_res = await db.execute(ur_stmt)
+                if not ur_res.scalars().first():
+                    db.add(UserRoleModel(user_id=admin_user.id, role_id=admin_role.id))
+                    logger.info("  + Assigned ADMIN role to user: %s (%s)", admin_user.email, admin_user.id)
+
+            await db.commit()
+
     logger.info("✅ Database seeding completed successfully!")
 
 

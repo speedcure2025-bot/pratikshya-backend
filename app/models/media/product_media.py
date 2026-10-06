@@ -49,18 +49,18 @@ class ProductMediaModel(Base):
     # ── Both ends of the mapping are mandatory ───────────────────────────────
     product_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("catalog_product.id", ondelete="CASCADE"),
+        ForeignKey("pratikshya.catalog_product.id", ondelete="CASCADE"),
         nullable=False,
     )
     media_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("media_media_asset.id", ondelete="CASCADE"),
+        ForeignKey("pratikshya.media_media_asset.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
     # ── Placement within the product's gallery ───────────────────────────────
-    role: Mapped[str] = mapped_column(String(30), nullable=False, default="gallery")
+    role: Mapped[str] = mapped_column(String(30), nullable=False, default="GALLERY")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 

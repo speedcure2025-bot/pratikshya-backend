@@ -28,6 +28,7 @@ from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
+from app.schemas.media.media import MEDIA_ASSET_SCOPE_PRODUCT, MEDIA_ASSET_STATUS_UPLOADED
 
 
 class MediaAssetModel(Base):
@@ -54,10 +55,10 @@ class MediaAssetModel(Base):
     caption: Mapped[Optional[str]] = mapped_column(Text)
 
     # ── Lifecycle ────────────────────────────────────────────────────────────
-    status: Mapped[str] = mapped_column(String(30), nullable=False, default="uploaded")
-    scope: Mapped[str] = mapped_column(String(30), nullable=False, default="product")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default=MEDIA_ASSET_STATUS_UPLOADED)
+    scope: Mapped[str] = mapped_column(String(30), nullable=False, default=MEDIA_ASSET_SCOPE_PRODUCT)
     uploaded_by: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("users.id", ondelete="SET NULL")
+        String(36), ForeignKey("pratikshya.users.id", ondelete="SET NULL")
     )
 
     __table_args__ = (
