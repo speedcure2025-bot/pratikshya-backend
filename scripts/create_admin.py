@@ -82,10 +82,10 @@ async def main() -> None:
             count_res = await db.execute(count_stmt)
             admin_count = count_res.scalar_one()
 
-            if admin_count > 0 and bootstrap_secret:
+            if admin_count > 0:
                 logger.error(
-                    "Active admins already exist and ADMIN_BOOTSTRAP_SECRET is set. "
-                    "Cannot bootstrap a second admin via this script without clearing existing admins."
+                    "A SUPER_ADMIN already exists. There can only be one. "
+                    "No changes made."
                 )
                 sys.exit(1)
 
@@ -95,6 +95,7 @@ async def main() -> None:
                 full_name=full_name,
                 hashed_password=hash_password(password),
                 user_type="admin",
+                account_level="SUPER_ADMIN",
                 status="ACTIVE",
                 is_verified=True,
                 force_password_change=False,

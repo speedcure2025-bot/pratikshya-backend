@@ -29,6 +29,7 @@ from app.api.v1.attendance import router as attendance_router
 from app.api.v1.performance import router as performance_router
 from app.api.v1.leave import router as leave_router
 from app.api.v1.admin import router as admin_router
+from app.api.v1.super_admin import router as super_admin_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.ai_assistant import router as ai_assistant_router
@@ -71,6 +72,7 @@ api_router.include_router(attendance_router)
 api_router.include_router(performance_router)
 api_router.include_router(leave_router)
 api_router.include_router(admin_router)
+api_router.include_router(super_admin_router)
 api_router.include_router(audit_router)
 api_router.include_router(analytics_router)
 api_router.include_router(ai_assistant_router)

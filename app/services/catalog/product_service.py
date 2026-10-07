@@ -607,7 +607,7 @@ class ProductService:
             name=p.name or "",
             slug=p.slug or "",
             sku=p.sku or "",
-            brand=p.brand or "Pratikshya Fashon",
+            brand=p.brand or "Pratikshya Fashion",
             productType=p.product_type or "fashion",
             category=p.category or "",
             subcategory=p.subcategory or "",
@@ -705,7 +705,7 @@ class ProductService:
             name=p.name or "",
             slug=p.slug or "",
             sku=p.sku or "",
-            brand=p.brand or "Pratikshya Fashon",
+            brand=p.brand or "Pratikshya Fashion",
             productType=p.product_type or "fashion",
             productCode=p.product_code or "",
             barcode=p.barcode or "",
@@ -1656,7 +1656,7 @@ class ProductService:
         "name": "",
         "slug": "",
         "sku": "",
-        "brand": "Pratikshya Fashon",
+        "brand": "Pratikshya Fashion",
         "product_type": "fashion",
         "category": "",
         "gender": "Women",
@@ -1761,7 +1761,7 @@ class ProductService:
             if supplied_sku
             else await self._generate_unique_sku()
         )
-        data["brand"] = data.get("brand") or "Pratikshya Fashon"
+        data["brand"] = data.get("brand") or "Pratikshya Fashion"
         data["product_type"] = data.get("product_type") or "fashion"
         data["currency"] = data.get("currency") or "INR"
         self._derive_pricing(data)
@@ -1825,7 +1825,7 @@ class ProductService:
             if supplied_sku
             else await self._generate_unique_sku(prefix=req.id)
         )
-        data["brand"] = data.get("brand") or "Pratikshya Fashon"
+        data["brand"] = data.get("brand") or "Pratikshya Fashion"
         data["product_type"] = data.get("product_type") or "fashion"
         data["currency"] = data.get("currency") or "INR"
         self._derive_pricing(data)

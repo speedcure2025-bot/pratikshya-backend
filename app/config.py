@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     )
 
     # --- App ---
-    APP_NAME: str = "Pratikshya Fashon Backend"
+    APP_NAME: str = "Pratikshya Fashion Backend"
     APP_ENV: str = "development"
     DEBUG: bool = True
     SECRET_KEY: str = "your-super-secret-key-change-in-production-min-32-chars"

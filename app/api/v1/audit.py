@@ -12,9 +12,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_admin, get_db, require_admin_permission
+from app.core.rbac import ACCOUNT_LEVEL_SUPER_ADMIN
+from app.dependencies import get_current_admin, get_db, require_admin_permission, resolve_account_level
 from app.models.audit.activity_log import ActivityLogModel
 from app.models.auth.user import UserModel
+from app.models.employee.employee import EmployeeProfileModel
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
@@ -57,7 +59,26 @@ async def list_logs(
     _admin: UserModel = Depends(get_current_admin),
 ):
     await require_admin_permission(_admin, db, "audit.view")
+
+    # ADMIN sees all entries EXCEPT those authored by SUPER_ADMIN accounts.
+    # SUPER_ADMIN gets the full unfiltered diary.
+    # The filter joins employee_profiles to resolve actor_employee_id → user,
+    # then excludes rows where that user is SUPER_ADMIN level.
     stmt = select(ActivityLogModel)
+    actor_level = resolve_account_level(_admin)
+    if actor_level != ACCOUNT_LEVEL_SUPER_ADMIN:
+        super_admin_codes_subq = (
+            select(EmployeeProfileModel.employee_code)
+            .join(UserModel, UserModel.id == EmployeeProfileModel.user_id)
+            .where(UserModel.account_level == ACCOUNT_LEVEL_SUPER_ADMIN)
+            .scalar_subquery()
+        )
+        stmt = stmt.where(
+            or_(
+                ActivityLogModel.actor_employee_id.is_(None),
+                ActivityLogModel.actor_employee_id.not_in(super_admin_codes_subq),
+            )
+        )
     if action:
         stmt = stmt.where(ActivityLogModel.action == action)
     if target_product_id:

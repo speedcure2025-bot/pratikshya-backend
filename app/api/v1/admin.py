@@ -1,15 +1,18 @@
 """
-Admin — Settings, Analytics snapshot, Activity log, Roles.
+Admin — Settings (read-only), Activity log, Roles, Capabilities, Dashboard.
 
 URL mapping (API_CONTRACT.md § ADMIN → implementation):
 
-  Settings
+  Settings (read — both Admin and Super Admin)
   ─────────────────────────────────────────────────────────────────────────────
   GET    /admin/settings                  ← all sections (deep-merged defaults)
   GET    /admin/settings/{section}        ← single section
-  PATCH  /admin/settings/{section}        ← update section (Super Admin)
-  POST   /admin/settings/{section}/reset  ← reset section to defaults
-  POST   /admin/settings/reset            ← reset ALL sections to defaults
+
+  Write / reset operations are Super-Admin-only and live at:
+    PATCH  /super-admin/settings/{section}
+    POST   /super-admin/settings/{section}/reset
+    POST   /super-admin/settings/reset
+  See app/api/v1/super_admin.py.
 
   Activity log
   ─────────────────────────────────────────────────────────────────────────────
@@ -20,12 +23,13 @@ URL mapping (API_CONTRACT.md § ADMIN → implementation):
   GET    /admin/roles                     ← list 8 built-in roles
   GET    /admin/roles/{roleId}            ← single role with default permissions
 
+  Capabilities
+  ─────────────────────────────────────────────────────────────────────────────
+  GET    /admin/capabilities              ← account hierarchy + capability groups
+
   Dashboard
   ─────────────────────────────────────────────────────────────────────────────
   GET    /admin/dashboard/summary         ← consolidated dashboard aggregates
-                                          (same payload as the analytics
-                                          implementation; this is the path
-                                          the Admin portal actually calls)
 
 Notes:
   - Settings are deep-merged against SETTINGS_DEFAULTS on every read.
@@ -34,20 +38,23 @@ Notes:
     fixed at startup (roles-permissions.json equivalent).
 """
 
-import copy
-from typing import Any, Dict, Optional
-
-from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
 from app.core.logging import get_logger
-from app.dependencies import get_current_admin, get_db, require_permission_for_user, require_super_admin_user
+from app.core.rbac import ACCOUNT_LEVEL_SUPER_ADMIN
+from app.dependencies import (
+    get_current_admin,
+    get_db,
+    require_admin_permission,
+    require_permission_for_user,
+    resolve_account_level,
+)
 from app.models.admin.setting import SettingModel
 from app.models.auth.user import UserModel
-from app.services.media.media_validation import allowed_image_extensions
+from app.models.employee.employee import EmployeeProfileModel
 
 logger = get_logger(__name__)
 
@@ -55,31 +62,18 @@ router = APIRouter(prefix="/admin", tags=["Admin Business Config"])
 
 
 # Settings catalogue: ONE source for sections + defaults (shared with the
-# workforce services — see app/core/settings_catalog.py; extracted 2026-09 so
-# punch rules can never drift from what the Admin settings surface serves).
-from app.core.settings_catalog import KNOWN_SECTIONS, SETTINGS_DEFAULTS, merge_defaults
+# workforce services — see app/core/settings_catalog.py).
+from app.core.settings_catalog import KNOWN_SECTIONS, SETTINGS_DEFAULTS, merge_defaults  # noqa: E402
+
 
 def _merge_defaults(section: str, stored: dict) -> dict:
     return merge_defaults(section, stored)
 
 
 # ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
-class SettingsPatchRequest(BaseModel):
-    data: Dict[str, Any]
-
-
-# ---------------------------------------------------------------------------
 # STATIC ROLES (mirrors roles-permissions.json)
 #
-# CONSOLIDATION (2026-09): the catalog moved to `app.core.rbac` — the single
-# canonical role vocabulary shared by the RBAC fallback, the auth service and
-# the seed script. Business roles are keyed by their persisted canonical
-# names (STORE_MANAGER, SALES_EXECUTIVE, …); the former Admin-portal keys
-# (MANAGER, SALES, INVENTORY, WAREHOUSE, CS, STYLIST) remain as alias entries
-# pointing at the same definitions. Re-exported here so every existing
+# Re-exported here so every existing
 # `from app.api.v1.admin import BUILT_IN_ROLES` import site keeps working.
 # ---------------------------------------------------------------------------
 
@@ -87,15 +81,15 @@ from app.core.rbac import BUILT_IN_ROLES  # noqa: E402  (re-export — compat se
 
 
 # ===========================================================================
-# SETTINGS
+# SETTINGS — Read (Admin + Super Admin)
 # ===========================================================================
 
 @router.get(
     "/settings",
     summary="Get all settings sections (merged with defaults)",
     description=(
-        "Returns all 19 sections deep-merged against `SETTINGS_DEFAULTS`.  \n"
-        "Authorization: Admin."
+        "Returns all sections deep-merged against `SETTINGS_DEFAULTS`.  \n"
+        "Authorization: Admin (both ADMIN and SUPER_ADMIN levels)."
     ),
 )
 async def get_all_settings(
@@ -117,6 +111,9 @@ async def get_all_settings(
 @router.get(
     "/settings/{section}",
     summary="Get a single settings section",
+    description=(
+        "Authorization: Admin (both ADMIN and SUPER_ADMIN levels)."
+    ),
 )
 async def get_settings_section(
     section: str,
@@ -135,86 +132,6 @@ async def get_settings_section(
     return {"ok": True, "section": section, "data": _merge_defaults(section, stored)}
 
 
-@router.patch(
-    "/settings/{section}",
-    summary="Update a settings section (Super Admin)",
-    description=(
-        "Body: `{ data: { ... } }` — partial patch, deep-merged against current value.  \n"
-        "Authorization: Super Admin only."
-    ),
-)
-async def update_settings_section(
-    section: str,
-    req: SettingsPatchRequest,
-    current_user: UserModel = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    await require_super_admin_user(current_user, db)
-    if section not in KNOWN_SECTIONS:
-        raise NotFoundException(message=f"Unknown settings section '{section}'.")
-
-    stmt = select(SettingModel).where(SettingModel.id == section)
-    result = await db.execute(stmt)
-    row = result.scalars().first()
-
-    if row:
-        # Deep-merge incoming patch on top of current stored value
-        current_value = dict(row.value or {})
-        current_value.update(req.data)
-        row.value = current_value
-        row.updated_by = current_user.id
-    else:
-        row = SettingModel(id=section, value=req.data, updated_by=current_user.id)
-        db.add(row)
-
-    await db.flush()
-    return {"ok": True, "section": section, "data": _merge_defaults(section, row.value)}
-
-
-@router.post(
-    "/settings/{section}/reset",
-    summary="Reset a settings section to defaults",
-)
-async def reset_settings_section(
-    section: str,
-    current_user: UserModel = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    await require_super_admin_user(current_user, db)
-    if section not in KNOWN_SECTIONS:
-        raise NotFoundException(message=f"Unknown settings section '{section}'.")
-
-    stmt = select(SettingModel).where(SettingModel.id == section)
-    result = await db.execute(stmt)
-    row = result.scalars().first()
-    if row:
-        row.value = {}
-        row.updated_by = current_user.id
-        await db.flush()
-
-    return {"ok": True, "section": section, "data": _merge_defaults(section, {})}
-
-
-@router.post(
-    "/settings/reset",
-    summary="Reset ALL settings sections to defaults",
-    description="Authorization: Super Admin only. Removes all stored overrides.",
-)
-async def reset_all_settings(
-    current_user: UserModel = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    await require_super_admin_user(current_user, db)
-    stmt = select(SettingModel)
-    result = await db.execute(stmt)
-    rows = result.scalars().all()
-    for row in rows:
-        row.value = {}
-        row.updated_by = current_user.id
-    await db.flush()
-    return {"ok": True, "message": "All settings reset to defaults."}
-
-
 # ===========================================================================
 # ACTIVITY LOG
 # ===========================================================================
@@ -224,6 +141,8 @@ async def reset_all_settings(
     summary="Admin — shared activity diary (latest 200 entries)",
     description=(
         "Returns the most recent 200 audit log entries across all domains.  \n"
+        "ADMIN level sees all entries except those authored by SUPER_ADMIN accounts.  \n"
+        "SUPER_ADMIN level sees the full unfiltered diary.  \n"
         "Authorization: Admin."
     ),
 )
@@ -231,17 +150,28 @@ async def get_activity_log(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "audit.view")
     from app.models.audit.activity_log import ActivityLogModel
-    from sqlalchemy import select as sa_select, inspect as sa_inspect
-    from sqlalchemy import text
+    from sqlalchemy import select as sa_select
 
-    # Gracefully handle the case where new columns haven't been migrated yet
     try:
-        stmt = (
-            sa_select(ActivityLogModel)
-            .order_by(ActivityLogModel.created_at.desc())
-            .limit(200)
-        )
+        stmt = sa_select(ActivityLogModel)
+        actor_level = resolve_account_level(current_user)
+        if actor_level != ACCOUNT_LEVEL_SUPER_ADMIN:
+            super_admin_codes_subq = (
+                sa_select(EmployeeProfileModel.employee_code)
+                .join(UserModel, UserModel.id == EmployeeProfileModel.user_id)
+                .where(UserModel.account_level == ACCOUNT_LEVEL_SUPER_ADMIN)
+                .scalar_subquery()
+            )
+            from sqlalchemy import or_
+            stmt = stmt.where(
+                or_(
+                    ActivityLogModel.actor_employee_id.is_(None),
+                    ActivityLogModel.actor_employee_id.not_in(super_admin_codes_subq),
+                )
+            )
+        stmt = stmt.order_by(ActivityLogModel.created_at.desc()).limit(200)
         result = await db.execute(stmt)
         logs = result.scalars().all()
 
@@ -249,23 +179,22 @@ async def get_activity_log(
             "ok": True,
             "activity": [
                 {
-                    "id":                log.id,
-                    "at":                log.created_at.isoformat(),
-                    "actorEmployeeId":   getattr(log, "actor_employee_id", None),
-                    "actorName":         getattr(log, "actor_name", None),
-                    "targetProductId":   getattr(log, "target_product_id", None),
-                    "targetOfferId":     getattr(log, "target_offer_id", None),
-                    "targetCategoryId":  getattr(log, "target_category_id", None),
+                    "id":                 log.id,
+                    "at":                 log.created_at.isoformat(),
+                    "actorEmployeeId":    getattr(log, "actor_employee_id", None),
+                    "actorName":          getattr(log, "actor_name", None),
+                    "targetProductId":    getattr(log, "target_product_id", None),
+                    "targetOfferId":      getattr(log, "target_offer_id", None),
+                    "targetCategoryId":   getattr(log, "target_category_id", None),
                     "targetCollectionId": getattr(log, "target_collection_id", None),
-                    "targetOrderId":     getattr(log, "target_order_id", None),
-                    "action":            getattr(log, "action", None),
-                    "summary":           getattr(log, "summary", None),
+                    "targetOrderId":      getattr(log, "target_order_id", None),
+                    "action":             getattr(log, "action", None),
+                    "summary":            getattr(log, "summary", None),
                 }
                 for log in logs
             ],
         }
     except Exception:
-        # Columns don't exist yet (pending migration) — return empty diary
         logger.warning("Activity log query failed — likely a pending migration", exc_info=True)
         return {"ok": True, "activity": []}
 
@@ -280,18 +209,32 @@ async def get_activity_log(
     description=(
         "Returns the consolidated role catalogue with its default permission "
         "sets. Legacy Admin-portal aliases (MANAGER, SALES, …) resolve to the "
-        "canonical business-role entries and are not listed twice."
+        "canonical business-role entries and are not listed twice.\n\n"
+        "SUPER_ADMIN and ADMIN account-level pseudo-roles are only included "
+        "when the requesting user is a SUPER_ADMIN."
     ),
 )
 async def list_roles(
     current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "roles.view")
+    caller_level = resolve_account_level(current_user)
+    # Account-level pseudo-roles (SUPER_ADMIN / ADMIN) are not business roles
+    # that can be assigned during employee creation. Only the system owner
+    # (SUPER_ADMIN) should ever see them — and only for reference, since the
+    # creation endpoint enforces the hierarchy server-side as well.
+    account_level_role_ids = {"SUPER_ADMIN", "ADMIN"}
     seen = set()
     roles = []
     for role in BUILT_IN_ROLES.values():
         if role["id"] in seen:
             continue
         seen.add(role["id"])
+        # Hide account-level pseudo-roles from non-super-admin callers so the
+        # frontend "add employee" form never presents them as selectable options.
+        if role["id"] in account_level_role_ids and caller_level != ACCOUNT_LEVEL_SUPER_ADMIN:
+            continue
         roles.append(role)
     return {"ok": True, "roles": roles}
 
@@ -303,7 +246,9 @@ async def list_roles(
 async def get_role(
     role_id: str,
     current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "roles.view")
     role = BUILT_IN_ROLES.get(role_id.upper())
     if not role:
         raise NotFoundException(f"Role '{role_id}' not found.")
@@ -316,17 +261,26 @@ async def get_role(
     description=(
         "The canonical authorization vocabulary shared with the frontend "
         "(account levels, creation matrix, capability groups, business-role "
-        "defaults). Read-only; any authenticated admin surface account."
+        "defaults). Read-only; any authenticated admin surface account.\n\n"
+        "`creatableLevels` is scoped to the requesting user's own account level "
+        "so the frontend receives only the levels they are authorized to create."
     ),
 )
 async def list_capabilities(
     current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "roles.view")
     from app.core.rbac import ACCOUNT_LEVELS, ALL_CAPABILITIES, CAPABILITY_GROUPS, CREATABLE_LEVELS
+    caller_level = resolve_account_level(current_user)
+    # Return only the levels this caller is allowed to create, not the full
+    # matrix. This prevents the frontend from displaying account levels the
+    # current user has no authority to assign (e.g. ADMIN showing ADMIN option).
+    caller_creatable = sorted(CREATABLE_LEVELS.get(caller_level or "", set()))
     return {
         "ok": True,
         "accountLevels": list(ACCOUNT_LEVELS),
-        "creatableLevels": {level: sorted(levels) for level, levels in CREATABLE_LEVELS.items()},
+        "creatableLevels": {caller_level: caller_creatable} if caller_level else {},
         "capabilities": list(ALL_CAPABILITIES),
         "capabilityGroups": CAPABILITY_GROUPS,
     }
@@ -348,7 +302,6 @@ async def list_capabilities(
 async def get_admin_dashboard_summary(
     days: int = Query(default=7, ge=1, le=90),
     recent_limit: int = Query(default=5, ge=1, le=20),
-    recentLimit: Optional[int] = Query(default=None, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_admin),
 ):
@@ -361,7 +314,7 @@ async def get_admin_dashboard_summary(
 
     return await admin_dashboard_summary(
         days=days,
-        recent_limit=recentLimit if recentLimit is not None else recent_limit,
+        recent_limit=recent_limit,
         db=db,
         current_user=current_user,
     )

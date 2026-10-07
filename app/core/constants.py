@@ -21,7 +21,7 @@ class UserType(str, Enum):
 
 
 class AccountLevel(str, Enum):
-    """Four-level staff account hierarchy (RBAC consolidation 2026-09).
+    """Three-level staff account hierarchy (RBAC consolidation 2026-09).
 
     Customers carry no account level. Authorization semantics and the
     creation matrix live in ``app.core.rbac`` (single canonical module).
@@ -29,7 +29,6 @@ class AccountLevel(str, Enum):
 
     SUPER_ADMIN = "SUPER_ADMIN"
     ADMIN = "ADMIN"
-    SUPER_EMPLOYEE = "SUPER_EMPLOYEE"
     EMPLOYEE = "EMPLOYEE"
 
 

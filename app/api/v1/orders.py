@@ -30,7 +30,6 @@ URL mapping (API_CONTRACT.md → implementation):
   POST /admin/orders/{id}/cancel            ← broader cancel set
   POST /admin/orders/{id}/notes             ← add internal note
   POST /admin/orders/{id}/status            ← validated status transition
-  POST /admin/orders/{id}/force-status      ← bypass adjacency (audited)
   GET  /admin/orders/{id}/invoice           ← invoice stub
 
   Admin — Returns desk
@@ -72,7 +71,6 @@ from app.schemas.orders.order import (
     ClaimGuestOrdersResponse,
     CreateReturnRequest,
     DispatchRequest,
-    ForceStatusRequest,
     FulfillmentAssignRequest,
     InspectReturnRequest,
     InvoiceResponse,
@@ -672,32 +670,6 @@ async def admin_apply_status(
     await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.apply_status(order_id, req, actor_id=current_user.id)
-    return AdminSingleOrderResponse(order=order)
-
-
-# ===========================================================================
-# ADMIN — force status (bypass adjacency — always audited)
-# ===========================================================================
-
-@router.post(
-    "/admin/orders/{order_id}/force-status",
-    response_model=AdminSingleOrderResponse,
-    summary="Admin — force status transition (bypasses adjacency map)",
-    description=(
-        "Authorization: `orders.manage`.  \n"
-        "**Bypasses `ORDER_TRANSITIONS`** — use only when manual recovery is required.  \n"
-        "Body: `{ status, reason }` — `reason` is mandatory and always written to audit trail."
-    ),
-)
-async def admin_force_status(
-    order_id: str,
-    req: ForceStatusRequest,
-    current_user: UserModel = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    await require_admin_permission(current_user, db, "orders.manage")
-    service = OrderService(db)
-    order = await service.force_status(order_id, req, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
 
 

@@ -442,7 +442,7 @@ class ExploreService:
                 slides.append(
                     HeroSlide(
                         id=row.id,
-                        title=row.title or "PRATIKSHYA FASHON",
+                        title=row.title or "PRATIKSHYA FASHION",
                         subtitle=row.subtitle or "",
                         cta=row.cta_label or "Explore Collection",
                         href=row.cta_href or "/shop",

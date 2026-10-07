@@ -255,18 +255,32 @@ class AuthService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         surface: str = "customer",
+        _prefetched_rbac: Optional[Tuple[List[str], List[str]]] = None,
     ) -> TokenResponse:
         """
         Build the JWT token response.
 
         `surface` controls which alias key is populated in the response
         (user / employee / admin) as per API_CONTRACT.md.
+
+        `_prefetched_rbac` — when the caller has already resolved
+        (roles, permissions) for this user (e.g. to check account_level
+        before deciding which endpoint is allowed), pass the tuple here to
+        skip the redundant second RBAC lookup.  The cache means this is
+        never wrong; it just avoids a wasted round-trip on a cold cache.
         """
-        roles, permissions = await self._get_user_roles_and_permissions(user.id)
+        if _prefetched_rbac is not None:
+            roles, permissions = _prefetched_rbac
+        else:
+            roles, permissions = await self._get_user_roles_and_permissions(user.id)
+
+        from app.dependencies import resolve_account_level
+        account_level = resolve_account_level(user, roles)
 
         access_token = create_access_token(
             subject=user.id,
             user_type=user.user_type,
+            account_level=account_level,
             extra_claims={
                 "roles": roles,
                 "force_password_change": user.force_password_change,
@@ -467,24 +481,21 @@ class AuthService:
         admin_count = count_res.scalar_one()
         is_bootstrap = admin_count == 0
 
-        bootstrap_secret = getattr(settings, "ADMIN_BOOTSTRAP_SECRET", None)
+        # Only the very first admin (bootstrap) may be created through this
+        # endpoint. Once a SUPER_ADMIN exists there is exactly one — this path
+        # is permanently closed so no authenticated caller, regardless of role,
+        # can create a second SUPER_ADMIN.
+        if not is_bootstrap:
+            raise ForbiddenException(
+                "A SUPER_ADMIN account already exists. "
+                "Additional admin accounts must be created through POST /admin/employees."
+            )
 
-        if is_bootstrap:
-            if bootstrap_secret and req.adminSecret != bootstrap_secret:
-                raise ForbiddenException(
-                    "ADMIN_BOOTSTRAP_SECRET is required to create the first admin account."
-                )
-        else:
-            if actor is None:
-                if not bootstrap_secret or req.adminSecret != bootstrap_secret:
-                    raise ForbiddenException(
-                        "Creating an admin account requires an existing SUPER_ADMIN session "
-                        "or the ADMIN_BOOTSTRAP_SECRET key."
-                    )
-            else:
-                actor_roles, _actor_permissions = await self._get_user_roles_and_permissions(actor.id)
-                if "SUPER_ADMIN" not in actor_roles:
-                    raise ForbiddenException("Creating an admin account requires a SUPER_ADMIN session.")
+        bootstrap_secret = getattr(settings, "ADMIN_BOOTSTRAP_SECRET", None)
+        if bootstrap_secret and req.adminSecret != bootstrap_secret:
+            raise ForbiddenException(
+                "ADMIN_BOOTSTRAP_SECRET is required to create the first admin account."
+            )
 
         email_clean = req.email.strip().lower()
         email_stmt = select(UserModel).where(UserModel.email == email_clean)
@@ -534,15 +545,68 @@ class AuthService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> TokenResponse:
-        admin_identifier = req.adminId or str(req.email or "")
+        """ADMIN-level sign-in. Rejects SUPER_ADMIN — use /auth/super-admin/sign-in."""
+        user = await self._resolve_admin_user(req.adminId or str(req.email or ""), req.password, ip_address)
 
-        if not admin_identifier:
+        from app.dependencies import resolve_account_level
+        from app.core.rbac import ACCOUNT_LEVEL_SUPER_ADMIN
+
+        # Fetch once — reused for the level check AND passed into
+        # _build_token_response to avoid a redundant second lookup.
+        roles, permissions = await self._get_user_roles_and_permissions(user.id)
+        if resolve_account_level(user, roles) == ACCOUNT_LEVEL_SUPER_ADMIN:
+            logger.warning("SUPER_ADMIN attempted ADMIN login endpoint user_id=%s ip=%s", user.id, ip_address)
+            raise ForbiddenException(
+                "This account is a SUPER_ADMIN. Please use /auth/super-admin/sign-in."
+            )
+
+        logger.info("Admin login success user_id=%s ip=%s", user.id, ip_address)
+        return await self._build_token_response(
+            user, ip_address, user_agent, surface="admin",
+            _prefetched_rbac=(roles, permissions),
+        )
+
+    async def login_super_admin(
+        self,
+        req: AdminLoginRequest,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> TokenResponse:
+        """SUPER_ADMIN-exclusive sign-in. Rejects ADMIN — use /auth/admin/sign-in."""
+        user = await self._resolve_admin_user(req.adminId or str(req.email or ""), req.password, ip_address)
+
+        from app.dependencies import resolve_account_level
+        from app.core.rbac import ACCOUNT_LEVEL_SUPER_ADMIN
+
+        # Fetch once — reused for the level check AND passed into
+        # _build_token_response to avoid a redundant second lookup.
+        roles, permissions = await self._get_user_roles_and_permissions(user.id)
+        if resolve_account_level(user, roles) != ACCOUNT_LEVEL_SUPER_ADMIN:
+            logger.warning("Non-SUPER_ADMIN attempted super-admin login endpoint user_id=%s ip=%s", user.id, ip_address)
+            raise ForbiddenException(
+                "This account is not a SUPER_ADMIN. Please use /auth/admin/sign-in."
+            )
+
+        logger.info("Super admin login success user_id=%s ip=%s", user.id, ip_address)
+        return await self._build_token_response(
+            user, ip_address, user_agent, surface="admin",
+            _prefetched_rbac=(roles, permissions),
+        )
+
+    async def _resolve_admin_user(self, identifier: str, password: str, ip_address: Optional[str]) -> UserModel:
+        """Shared credential resolution for admin-surface logins.
+
+        Looks up by email or phone, validates user_type, status, password
+        presence, and password correctness. Does NOT check account_level —
+        callers do that themselves after this returns.
+        """
+        if not identifier:
             raise UnauthorizedException("Admin ID or email is required.")
 
-        if _is_phone(admin_identifier):
-            stmt = select(UserModel).where(UserModel.phone == admin_identifier)
+        if _is_phone(identifier):
+            stmt = select(UserModel).where(UserModel.phone == identifier)
         else:
-            stmt = select(UserModel).where(UserModel.email == admin_identifier.lower())
+            stmt = select(UserModel).where(UserModel.email == identifier.lower())
 
         res = await self.db.execute(stmt)
         user = res.scalars().first()
@@ -551,23 +615,18 @@ class AuthService:
             raise ForbiddenException("Admin access privileges required.")
 
         if is_staff_login_blocked(user.status):
-            raise ForbiddenException(
-                f"Admin account is {user.status.lower()}. Access denied."
-            )
+            raise ForbiddenException(f"Admin account is {user.status.lower()}. Access denied.")
 
         if not user.hashed_password:
             raise UnauthorizedException(
                 "This admin account has no password set. Please contact the system administrator."
             )
 
-        if not verify_password(req.password, user.hashed_password):
+        if not verify_password(password, user.hashed_password):
             logger.warning("Admin login failed — wrong password user_id=%s ip=%s", user.id, ip_address)
             raise UnauthorizedException("Invalid admin credentials.")
 
-        logger.info("Admin login success user_id=%s ip=%s", user.id, ip_address)
-        return await self._build_token_response(
-            user, ip_address, user_agent, surface="admin"
-        )
+        return user
 
     # ── Unified Staff Login (all four account levels) ─────────────────────────
 

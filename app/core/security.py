@@ -23,6 +23,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(
     subject: str,
     user_type: str,
+    account_level: Optional[str] = None,
     expires_delta: Optional[timedelta] = None,
     extra_claims: Optional[Dict[str, Any]] = None,
 ) -> str:
@@ -32,18 +33,23 @@ def create_access_token(
     Every token carries a unique `jti` (JWT ID) claim so that individual
     tokens can be blacklisted in Redis on logout without waiting for natural
     expiry.
+
+    ``account_level`` is encoded as a top-level claim so guards can
+    distinguish SUPER_ADMIN from ADMIN without a DB round-trip.
     """
     now = datetime.now(timezone.utc)
     expire = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
 
     to_encode: Dict[str, Any] = {
         "sub": subject,
-        "user_type": user_type,   # surface identifier (customer / employee / admin)
+        "user_type": user_type,       # surface identifier (customer / employee / admin)
         "token_type": "access",
-        "jti": str(uuid.uuid4()),  # unique token ID — used for blacklisting
+        "jti": str(uuid.uuid4()),     # unique token ID — used for blacklisting
         "iat": now,
         "exp": expire,
     }
+    if account_level:
+        to_encode["account_level"] = account_level
     if extra_claims:
         to_encode.update(extra_claims)
 

@@ -21,7 +21,7 @@ KNOWN_SECTIONS = {
 
 SETTINGS_DEFAULTS: Dict[str, Any] = {
     "business": {
-        "name": "Pratikshya Fashon",
+        "name": "Pratikshya Fashion",
         "email": "",
         "phone": "",
         "gst": "",

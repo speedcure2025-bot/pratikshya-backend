@@ -203,7 +203,7 @@ class StorefrontProduct(BaseModel):
     name: str = ""
     slug: str = ""
     sku: str = ""
-    brand: str = "Pratikshya Fashon"
+    brand: str = "Pratikshya Fashion"
     product_type: str = Field("fashion", alias="productType")
     category: str = ""
     subcategory: str = ""
@@ -276,7 +276,7 @@ class AdminProduct(BaseModel):
     name: str = ""
     slug: str = ""
     sku: str = ""
-    brand: str = "Pratikshya Fashon"
+    brand: str = "Pratikshya Fashion"
     product_type: str = Field("fashion", alias="productType")
     product_code: str = Field("", alias="productCode")
     barcode: str = ""
@@ -377,7 +377,7 @@ class EmployeeProduct(BaseModel):
     name: str = ""
     slug: str = ""
     sku: str = ""
-    brand: str = "Pratikshya Fashon"
+    brand: str = "Pratikshya Fashion"
     product_type: str = Field("fashion", alias="productType")
     product_code: str = Field("", alias="productCode")
     barcode: str = ""

@@ -64,13 +64,12 @@ class EmployeeCreateRequest(BaseModel):
             return None
         return value
 
-    # Account level (unified four-level model). Omitted == EMPLOYEE.
+    # Account level (unified three-level model). Omitted == EMPLOYEE.
     # The SERVER enforces the creation matrix and the delegation ceiling —
-    # ADMIN/SUPER_ADMIN targets require an admin creator, SUPER_EMPLOYEE
-    # targets require SUPER_ADMIN/ADMIN/SUPER_EMPLOYEE, and an EMPLOYEE
+    # ADMIN/SUPER_ADMIN targets require an admin creator, and an EMPLOYEE
     # creator is always rejected.
     accountLevel: Optional[str] = Field(
-        None, description="SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE (default EMPLOYEE)"
+        None, description="SUPER_ADMIN | ADMIN | EMPLOYEE (default EMPLOYEE)"
     )
 
     # Permission override
@@ -140,7 +139,7 @@ class EmployeeUpdateRequest(BaseModel):
     role: Optional[str] = Field(None, description="Business role (canonical catalogue name or legacy alias)")
     accountLevel: Optional[str] = Field(
         None,
-        description="SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE — SUPER_ADMIN creators only",
+        description="SUPER_ADMIN | ADMIN | EMPLOYEE — SUPER_ADMIN creators only",
     )
     joiningDate: Optional[date] = None
 

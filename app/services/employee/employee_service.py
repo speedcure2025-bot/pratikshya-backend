@@ -64,7 +64,6 @@ ROLE_CODE_PREFIX: dict[str, str] = {
     "FASHION_STYLIST":   "STY",
     # account levels (unified hierarchy) — admin-domain codes use the ADM prefix
     "ADMIN":             "ADM",
-    "SUPER_EMPLOYEE":    "SUP",
     "EMPLOYEE":          "EMP",
 }
 
@@ -114,6 +113,10 @@ async def _require_target_manageable(
         raise NotFoundException("Employee not found.")
     creator_level = _creator_account_level(creator, creator_roles or [])
     target_level = _creator_account_level(target)
+
+    # can_manage enforces the full creation matrix: ADMIN→ADMIN is blocked
+    # because CREATABLE_LEVELS["ADMIN"] = {EMPLOYEE}; ADMIN→SUPER_ADMIN is
+    # blocked by the same table. The single check below covers all cases.
     if not can_manage(creator_level, target_level):
         from app.services.audit.audit_service import record_detached
 
@@ -174,11 +177,12 @@ class EmployeeService:
         the least-privilege delegation ceiling:
 
           • creator level must be allowed to create the requested level
-            (SUPER_ADMIN → all four; ADMIN → ADMIN/SUPER_EMPLOYEE/EMPLOYEE;
-            SUPER_EMPLOYEE → SUPER_EMPLOYEE/EMPLOYEE; EMPLOYEE → none);
+            (SUPER_ADMIN → ADMIN/EMPLOYEE;
+             ADMIN → EMPLOYEE only;
+             EMPLOYEE → none);
+            SUPER_ADMIN accounts can only be bootstrapped, never created here;
           • requested capabilities must be delegable by the creator
-            (SUPER_ADMIN unlimited; everyone else ⊆ own effective set;
-            SUPER_EMPLOYEE further bounded to the employee domain);
+            (SUPER_ADMIN unlimited; everyone else ⊆ own effective set);
           • business roles are the existing PredefinedRole catalogue — never
             an elevation path into Admin authority.
 
@@ -199,7 +203,16 @@ class EmployeeService:
             from app.core.exceptions import BusinessLogicException
 
             raise BusinessLogicException(
-                f"Unknown account level '{req.accountLevel}'. Expected SUPER_ADMIN, ADMIN, SUPER_EMPLOYEE or EMPLOYEE."
+                f"Unknown account level '{req.accountLevel}'. Expected SUPER_ADMIN, ADMIN or EMPLOYEE."
+            )
+
+        # SUPER_ADMIN is the bootstrapped system owner — exactly one may exist.
+        # Creating additional SUPER_ADMIN accounts through this endpoint is
+        # permanently blocked regardless of the caller's account level.
+        if target_level == "SUPER_ADMIN":
+            raise ForbiddenException(
+                "A SUPER_ADMIN account cannot be created through this endpoint. "
+                "There can only be one SUPER_ADMIN in the system."
             )
 
         creator = await self.db.get(UserModel, creator_id)
@@ -235,7 +248,7 @@ class EmployeeService:
             if not section:
                 raise NotFoundException("Section not found.")
 
-        is_employee_domain = target_level in ("SUPER_EMPLOYEE", "EMPLOYEE")
+        is_employee_domain = target_level == "EMPLOYEE"
         temp_password = req.password or _generate_temp_password()
 
         user = UserModel(
@@ -274,14 +287,8 @@ class EmployeeService:
         # Role + capability assignment (hierarchy role is authoritative via
         # users.account_level; role rows carry the operational grants).
         role_names: list[str] = []
-        if target_level == "SUPER_ADMIN":
-            role_names.append("SUPER_ADMIN")
-        elif target_level == "ADMIN":
+        if target_level == "ADMIN":
             role_names.append("ADMIN")
-        elif target_level == "SUPER_EMPLOYEE":
-            role_names.append("SUPER_EMPLOYEE")
-            if business_role and business_role != "SUPER_EMPLOYEE":
-                role_names.append(business_role)
         elif is_employee_domain and business_role:
             role_names.append(business_role)
 
@@ -632,7 +639,7 @@ class EmployeeService:
 
         Enforced here (§7/§28):
           • the caller's delegable set — nobody grants capabilities they do not
-            hold; SUPER_EMPLOYEE creators are bounded to the employee domain;
+            hold;
           • SUPER_ADMIN keeps the top-level override regardless of overrides.
         """
         from app.core.rbac import (
