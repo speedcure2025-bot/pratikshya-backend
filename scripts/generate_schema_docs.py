@@ -170,9 +170,9 @@ for mod_key, mod_info in MODULE_MAPPINGS.items():
     print(f"Generated: {file_path}")
 
 # 2. Generate Master Index DATABASE_SCHEMA.md
-master_md = """# Pratikshya Fashon Database Schema Documentation
+master_md = """# Pratikshya Fashion Database Schema Documentation
 
-Welcome to the authoritative database schema documentation for **Pratikshya Fashon Backend**.
+Welcome to the authoritative database schema documentation for **Pratikshya Fashion Backend**.
 
 All database objects live in the dedicated PostgreSQL schema: **`pratikshya`**.
 The database contains **65 tables** categorized into 8 core business modules.

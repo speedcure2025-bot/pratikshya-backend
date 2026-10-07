@@ -1,6 +1,6 @@
-# PRATIKSHYA FASHON — Feature-Based Backend API
+# PRATIKSHYA FASHION — Feature-Based Backend API
 
-Modular FastAPI application backing the PRATIKSHYA FASHON ladies-priority retail platform.
+Modular FastAPI application backing the PRATIKSHYA FASHION ladies-priority retail platform.
 
 ## Features & Modules
 
@@ -41,7 +41,7 @@ future production/deployment phase but is **not** required to develop.
    PostgreSQL server:
    ```bash
    cp .env.example .env
-   # DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/pratikshya_fashon
+   # DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/pratikshya_fashion
    ```
 
 2. Create a virtual environment and install dependencies:

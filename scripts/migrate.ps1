@@ -1,5 +1,5 @@
 # ============================================================
-# migrate.ps1 — Alembic migration helper for Pratikshya Fashon
+# migrate.ps1 — Alembic migration helper for Pratikshya Fashion
 #
 # Usage:
 #   .\scripts\migrate.ps1              # runs against .env DATABASE_URL (default / AWS RDS)
@@ -13,10 +13,10 @@ param(
     [string]$Command = "upgrade head"
 )
 
-$DOCKER_DB_URL = "postgresql+asyncpg://pratikshya:pratikshya%40123@localhost:5432/pratikshya_fashon"
+$DOCKER_DB_URL = "postgresql+asyncpg://pratikshya:pratikshya%40123@localhost:5432/pratikshya_fashion"
 
 if ($Target -eq "docker") {
-    Write-Host "Docker Targeting LOCAL Docker DB (pratikshya_fashon on localhost:5432)" -ForegroundColor Cyan
+    Write-Host "Docker Targeting LOCAL Docker DB (pratikshya_fashion on localhost:5432)" -ForegroundColor Cyan
     $env:DATABASE_URL = $DOCKER_DB_URL
 } else {
     Write-Host "Targeting DATABASE_URL from .env" -ForegroundColor Yellow

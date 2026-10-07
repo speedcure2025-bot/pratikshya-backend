@@ -1,5 +1,5 @@
 """
-Centralized logging configuration for Pratikshya Fashon backend.
+Centralized logging configuration for Pratikshya Fashion backend.
 
 Log output
 ──────────────────────────────────────────────────────────────────────────────

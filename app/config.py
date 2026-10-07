@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     )
 
     # --- Database ---
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/pratikshya_fashon"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/pratikshya_fashion"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
@@ -82,8 +82,8 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: Optional[str] = "your-access-key"
     AWS_SECRET_ACCESS_KEY: Optional[str] = "your-secret-key"
     AWS_REGION: str = "ap-south-1"
-    AWS_BUCKET_NAME: str = "pratikshya-fashon-media"
-    CDN_BASE_URL: str = "https://cdn.pratikshyafashon.com"
+    AWS_BUCKET_NAME: str = "pratikshya-fashion-media"
+    CDN_BASE_URL: str = "https://cdn.pratikshyafashion.com"
 
     # --- Local object storage (Phase 6) ---
     # Root of the local object store. Relative paths resolve against the
@@ -117,9 +117,9 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: Optional[str] = "your-webhook-secret"
 
     # --- Email ---
-    MAIL_USERNAME: Optional[str] = "noreply@pratikshyafashon.com"
+    MAIL_USERNAME: Optional[str] = "noreply@pratikshyafashion.com"
     MAIL_PASSWORD: Optional[str] = "your-mail-password"
-    MAIL_FROM: str = "noreply@pratikshyafashon.com"
+    MAIL_FROM: str = "noreply@pratikshyafashion.com"
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_PORT: int = 587
     MAIL_TLS: bool = True

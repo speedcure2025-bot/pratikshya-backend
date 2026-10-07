@@ -131,7 +131,7 @@ def print_summary(report: MigrationReport, source: Path, storage_root: Path) -> 
     verb = "would copy" if report.dry_run else "copied"
     line = "-" * 68
     print(line)
-    print("PRATIKSHYA FASHON — local media import" + ("  [DRY RUN]" if report.dry_run else ""))
+    print("PRATIKSHYA FASHION — local media import" + ("  [DRY RUN]" if report.dry_run else ""))
     print(line)
     print(f"source            : {relative_source_label(source)}")
     print(f"provider          : {report.provider}")

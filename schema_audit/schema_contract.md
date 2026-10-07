@@ -249,7 +249,7 @@ _None (unique columns are represented by unique indexes below)._
 | `name` | `varchar(255)` | false |  | `''` |
 | `slug` | `varchar(255)` | false |  | `''` |
 | `sku` | `varchar(100)` | false |  | `''` |
-| `brand` | `varchar(100)` | false |  | `'Pratikshya Fashon'` |
+| `brand` | `varchar(100)` | false |  | `'Pratikshya Fashion'` |
 | `product_type` | `varchar(50)` | false |  | `'fashion'` |
 | `product_code` | `varchar(100)` | true |  | `''` |
 | `barcode` | `varchar(100)` | true |  | `''` |

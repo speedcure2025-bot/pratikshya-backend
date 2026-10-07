@@ -120,7 +120,7 @@ def _build_dsn() -> Tuple[str, str]:
 
     host = env.get("PGHOST", "localhost")
     port = env.get("PGPORT", "5432")
-    dbname = env.get("PGDATABASE", env.get("POSTGRES_DB", "pratikshya_fashon"))
+    dbname = env.get("PGDATABASE", env.get("POSTGRES_DB", "pratikshya_fashion"))
     user = env.get("PGUSER", env.get("POSTGRES_USER", "postgres"))
     password = env.get("PGPASSWORD", env.get("POSTGRES_PASSWORD", ""))
     label = f"host={host} port={port} dbname={dbname} user={user}"

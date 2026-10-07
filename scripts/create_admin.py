@@ -5,11 +5,11 @@ Reads credentials from the environment (.env) and creates the first admin accoun
 via the same AuthService used by the API — so password hashing, role assignment,
 and bootstrap-secret gating all go through exactly the same code path.
 
-Usage (from the pratikshya_fashon_backend directory):
+Usage (from the pratikshya_fashion_backend directory):
     python -m scripts.create_admin
 
 Required .env keys:
-    ADMIN_SEED_EMAIL        e.g. admin@pratikshyafashon.com
+    ADMIN_SEED_EMAIL        e.g. admin@pratikshyafashion.com
     ADMIN_SEED_PASSWORD     e.g. Admin@PF2024!
     ADMIN_SEED_FULL_NAME    e.g. Super Admin
     ADMIN_BOOTSTRAP_SECRET  e.g. pf-bootstrap-secret-2024-xK9mN3qR

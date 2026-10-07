@@ -1,7 +1,7 @@
 # Backend Database Schema Compatibility Audit (read-only)
 
 This folder contains a **read-only** database schema compatibility audit for the
-Pratikshya Fashon backend. It does **not** connect to a database by default,
+Pratikshya Fashion backend. It does **not** connect to a database by default,
 does **not** modify migrations, and the included verifier is forced to run in
 PostgreSQL **read-only** mode.
 

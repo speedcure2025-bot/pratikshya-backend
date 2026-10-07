@@ -1356,7 +1356,7 @@
           "unique": false
         },
         {
-          "app_default": "'Pratikshya Fashon'",
+          "app_default": "'Pratikshya Fashion'",
           "index": false,
           "kind": "varchar",
           "length": 100,

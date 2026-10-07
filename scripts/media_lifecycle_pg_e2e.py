@@ -214,7 +214,7 @@ async def seed():
             session.add(RolePermissionModel(role_id=role.id, permission_id=permission.id))
 
         admin = UserModel(
-            email="media-e2e-admin@pratikshyafashon.test",
+            email="media-e2e-admin@pratikshyafashion.test",
             full_name="Media E2E Admin",
             hashed_password="x",
             user_type="admin",
@@ -277,7 +277,7 @@ async def main() -> None:
             "subcategory": "silk",
             "price": 7500,
             "description": "A real product created through the admin API for the media lifecycle E2E.",
-            "brand": "Pratikshya Fashon",
+            "brand": "Pratikshya Fashion",
             "gender": "Women",
         },
     )

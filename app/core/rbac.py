@@ -1,5 +1,5 @@
 """
-PRATIKSHYA FASHON — canonical account-level / business-role / capability model.
+PRATIKSHYA FASHION — canonical account-level / business-role / capability model.
 
 ONE module, imported by dependencies, services and the Admin API. This is the
 consolidation layer for the authorization vocabulary — it is deliberately NOT

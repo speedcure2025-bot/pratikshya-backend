@@ -1,5 +1,5 @@
 """
-PaymentService — production Razorpay integration for Pratikshya Fashon.
+PaymentService — production Razorpay integration for Pratikshya Fashion.
 
 Flow for ONLINE payments (upi | card | netbanking):
 ─────────────────────────────────────────────────────────────────────────────
@@ -535,7 +535,7 @@ class PaymentService:
             receipt=receipt,
             notes={
                 "order_id": order.id,
-                "platform": "pratikshya_fashon",
+                "platform": "pratikshya_fashion",
             },
         )
 

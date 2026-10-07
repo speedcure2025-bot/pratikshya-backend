@@ -1,5 +1,5 @@
 -- ============================================================================
--- Idempotent migration script for Pratikshya Fashon
+-- Idempotent migration script for Pratikshya Fashion
 -- Applies all remaining schema changes that Alembic couldn't apply due to
 -- missing stub tables on this RDS database.
 --
