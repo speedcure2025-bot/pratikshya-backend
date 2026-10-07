@@ -34,7 +34,13 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "fullDayMinutes": 540,
     "weekOffWeekdays": [0],  # JS getUTCDay numbering; 0 = Sunday
     "holidays": [],
+    # While True, employees may also punch from the web page. Switch it off
+    # once the machines are live so the machine is the single source.
+    "webPunchEnabled": True,
 }
+
+#: Two taps closer than this on the same machine count as ONE punch.
+PUNCH_DEBOUNCE_SECONDS = 120
 
 ATTENDANCE_STATUSES = {
     "PRESENT", "LATE", "ABSENT", "HALF_DAY", "LEAVE", "HOLIDAY",
@@ -116,6 +122,7 @@ def resolve_settings(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         for item in (holidays or [])
         if isinstance(item, dict) and item.get("date")
     ]
+    out["webPunchEnabled"] = bool(source.get("webPunchEnabled", DEFAULT_SETTINGS["webPunchEnabled"]))
     return out
 
 
@@ -172,9 +179,13 @@ def status_after_punch(
     settings: Dict[str, Any],
     *,
     on_leave: bool = False,
+    work_minutes: Optional[int] = None,
 ) -> str:
     """Exactly the frontend statusAfterPunch cascade (leave wins, then the
-    holiday/week-off frame, then work-time math)."""
+    holiday/week-off frame, then work-time math).
+
+    `work_minutes` overrides the check_in→check_out span (machine days subtract
+    the time between a lunch OUT and the following IN)."""
     if on_leave:
         return "LEAVE"
     calendar = calendar_status(day, settings)
@@ -183,11 +194,101 @@ def status_after_punch(
     if not check_in:
         return "NOT_CHECKED_IN"
     timing = evaluate_timing(day, check_in, check_out, settings)
-    if check_out and 0 < timing["workMinutes"] < settings["minimumHalfDayMinutes"]:
+    worked = timing["workMinutes"] if work_minutes is None else work_minutes
+    if check_out and 0 < worked < settings["minimumHalfDayMinutes"]:
         return "HALF_DAY"
     if timing["lateMinutes"] > 0:
         return "LATE"
     return "PRESENT"
+
+
+# ── Machine punches → one daily record ──────────────────────────────────────
+
+
+def to_store_naive(instant: datetime) -> datetime:
+    """Absolute instant (aware) → store wall-clock (naive)."""
+    if instant.tzinfo is None:
+        return instant
+    return instant.astimezone(STORE_TZ).replace(tzinfo=None)
+
+
+def store_day_bounds_utc(day: date_t) -> Tuple[datetime, datetime]:
+    """[start, end) of a store day as aware UTC instants, for SQL range filters."""
+    start_local = datetime.combine(day, time(0, 0), tzinfo=STORE_TZ)
+    end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+
+def debounce_punches(
+    punches: Iterable[datetime], window_seconds: int = PUNCH_DEBOUNCE_SECONDS
+) -> List[datetime]:
+    """Sort and collapse double-taps: a punch within `window_seconds` of the
+    previously KEPT punch is dropped."""
+    kept: List[datetime] = []
+    for stamp in sorted(punches):
+        if kept and (stamp - kept[-1]).total_seconds() < window_seconds:
+            continue
+        kept.append(stamp)
+    return kept
+
+
+def paired_work_minutes(punches: List[datetime]) -> int:
+    """Sum of IN→OUT spans for an EVEN list of punches (0-1, 2-3, ...). The gap
+    between a lunch OUT and the next IN is not work time."""
+    total = 0.0
+    for index in range(0, len(punches) - 1, 2):
+        total += (punches[index + 1] - punches[index]).total_seconds() / 60
+    return max(0, round(total))
+
+
+def summarize_punches(
+    day: date_t,
+    punches: Iterable[datetime],
+    settings: Dict[str, Any],
+    *,
+    today: date_t,
+) -> Optional[Dict[str, Any]]:
+    """Raw store-wall-clock punches for ONE day → the daily attendance fields.
+
+    Pairing is by time order (not the machine's IN/OUT flag): first punch is
+    the check-in; the last punch is the check-out only when the punch count is
+    even. An odd count means someone is still in (today) or a punch is missing
+    (past day → exception for an admin to resolve; payroll never guesses).
+
+    Returns None when there are no punches.
+    """
+    kept = debounce_punches(punches)
+    if not kept:
+        return None
+
+    count = len(kept)
+    check_in = kept[0]
+    even = count % 2 == 0
+    check_out = kept[-1] if even else None
+    worked = paired_work_minutes(kept) if even else 0
+
+    exception: Optional[str] = None
+    if day < today and not even:
+        exception = "MISSING_OUT" if count == 1 else "ODD_PUNCHES"
+
+    timing = evaluate_timing(day, check_in, check_out, settings)
+    if exception:
+        status = "PENDING_CORRECTION"
+    else:
+        status = status_after_punch(
+            day, check_in, check_out, settings, work_minutes=worked if check_out else None
+        )
+
+    return {
+        "check_in": check_in,
+        "check_out": check_out,
+        "punch_count": count,
+        "worked_minutes": worked,
+        "late_minutes": timing["lateMinutes"],
+        "early_leave_minutes": timing["earlyLeaveMinutes"] if check_out else 0,
+        "exception": exception,
+        "status": status,
+    }
 
 
 # ── Leave ──────────────────────────────────────────────────────────────────

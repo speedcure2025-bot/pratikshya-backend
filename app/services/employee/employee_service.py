@@ -3,13 +3,13 @@ import random
 import secrets
 import string
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import logging
 
-from datetime import date
+from datetime import date, datetime
 from app.core.exceptions import (
     ConflictException,
     ForbiddenException,
@@ -821,8 +821,8 @@ class EmployeeService:
         already exists UPDATES that row — the admin correction use case —
         instead of failing or duplicating. Enforced for every write surface.
         """
-        # Validate employee exists
-        emp_profile = await self._get_profile(req.employee_id)
+        # Validate employee exists (admin staff included — they punch too)
+        emp_profile = await self._get_profile(req.employee_id, staff=True)
         existing = (
             await self.db.execute(
                 select(AttendanceModel).where(
@@ -832,10 +832,19 @@ class EmployeeService:
             )
         ).scalars().first()
         if existing is not None:
+            # Overwriting a day (possibly machine data) must say why.
+            if not (req.notes or "").strip():
+                raise ValidationException(
+                    "A reason is required when correcting an existing attendance record (send `notes`)."
+                )
+            status_sent = "status" in req.model_fields_set
             for field in ("check_in", "check_out", "status", "notes"):
+                if field == "status" and not status_sent:
+                    continue  # schema default must not overwrite a derived status
                 value = getattr(req, field)
                 if value is not None:
                     setattr(existing, field, value)
+            await self._apply_admin_timing(existing, status_explicit=status_sent)
             await self._audit(
                 "ATTENDANCE_CORRECTED",
                 actor.id if actor else None,
@@ -854,6 +863,7 @@ class EmployeeService:
             status=req.status,
             notes=req.notes,
         )
+        await self._apply_admin_timing(record, status_explicit="status" in req.model_fields_set)
         self.db.add(record)
         await self._audit(
             "ATTENDANCE_CORRECTED",
@@ -867,6 +877,38 @@ class EmployeeService:
         await self.db.refresh(record)
         return record
 
+    async def _apply_admin_timing(self, record: AttendanceModel, *, status_explicit: bool) -> None:
+        """Stamp an admin-written row as final: source=ADMIN, exception cleared,
+        late/early/worked recomputed from the (corrected) times.
+
+        When the admin did not choose a status and the row has a check-in, the
+        status is re-derived from the times (leave days keep LEAVE)."""
+        from app.services.employee import workforce_rules as rules
+        from app.services.employee.workforce_service import WorkforceService
+
+        settings = await WorkforceService(self.db).settings()
+        day = record.attendance_date
+        check_in = datetime.combine(day, record.check_in) if record.check_in else None
+        check_out = datetime.combine(day, record.check_out) if record.check_out else None
+        if check_in and check_out and check_out < check_in:
+            raise ValidationException("Check-out cannot be earlier than check-in.")
+        timing = rules.evaluate_timing(day, check_in, check_out, settings)
+        record.late_minutes = timing["lateMinutes"]
+        record.early_leave_minutes = timing["earlyLeaveMinutes"]
+        record.worked_minutes = timing["workMinutes"] if (check_in and check_out) else None
+        record.punch_count = (1 if check_in else 0) + (1 if check_out else 0)
+        record.exception = None
+        record.source = "ADMIN"
+        record.status = str(record.status or "").strip().upper()
+        if record.status not in rules.ATTENDANCE_STATUSES:
+            raise ValidationException(
+                f"Unknown attendance status '{record.status}'. Expected one of: "
+                + ", ".join(sorted(rules.ATTENDANCE_STATUSES))
+                + "."
+            )
+        if not status_explicit and check_in and record.status != "LEAVE":
+            record.status = rules.status_after_punch(day, check_in, check_out, settings)
+
     async def list_attendance(
         self,
         employee_id: str,
@@ -877,7 +919,7 @@ class EmployeeService:
     ) -> Tuple[List[AttendanceModel], int]:
         """One employee's history. Contract API-ATT-01 exposes `from`/`to`
         day bounds; both are pushed into SQL (bounded page, bounded total)."""
-        profile = await self._get_profile(employee_id)
+        profile = await self._get_profile(employee_id, staff=True)
         if date_from is None and date_to is None:
             skip = (page - 1) * page_size
             return await self.repo.list_attendance(profile.id, skip, page_size)
@@ -916,6 +958,11 @@ class EmployeeService:
         if not record:
             raise NotFoundException("Attendance record not found.")
         changed: List[str] = []
+        before = {
+            "status": record.status,
+            "in": record.check_in.strftime("%H:%M") if record.check_in else None,
+            "out": record.check_out.strftime("%H:%M") if record.check_out else None,
+        }
         if req.check_in is not None:
             record.check_in = req.check_in
             changed.append("check_in")
@@ -923,11 +970,15 @@ class EmployeeService:
             record.check_out = req.check_out
             changed.append("check_out")
         if req.status is not None:
-            record.status = req.status
+            record.status = req.status.strip().upper()
             changed.append("status")
         if req.notes is not None:
             record.notes = req.notes
             changed.append("notes")
+        # Only a change to times/status is a correction of the attendance facts.
+        # A notes-only edit must not clear a MISSING_OUT flag or claim the row.
+        if any(field in changed for field in ("check_in", "check_out", "status")):
+            await self._apply_admin_timing(record, status_explicit=req.status is not None)
         # Explicit load: `record.employee` is lazy and would raise in async.
         profile = await self.db.get(EmployeeProfileModel, record.employee_id)
         await self._audit(
@@ -936,6 +987,9 @@ class EmployeeService:
             profile.employee_code if profile else None,
             date=record.attendance_date.isoformat(),
             fields=changed,
+            status=f"{before['status']}->{record.status}",
+            check_in=f"{before['in']}->{record.check_in.strftime('%H:%M') if record.check_in else None}",
+            check_out=f"{before['out']}->{record.check_out.strftime('%H:%M') if record.check_out else None}",
         )
         await self.db.commit()
         await self.db.refresh(record)
@@ -952,8 +1006,17 @@ class EmployeeService:
             profile.employee_code if profile else None,
             date=record.attendance_date.isoformat(),
             action_taken="row removed",
+            status=record.status,
+            source=record.source,
         )
+        profile_id, day = record.employee_id, record.attendance_date
         await self.db.delete(record)
+        await self.db.flush()
+        # If the machine recorded punches that day, removing a (corrected) row
+        # reverts the day to what the machine says instead of leaving a false gap.
+        from app.services.employee.attendance_ingest_service import AttendanceIngestService
+
+        await AttendanceIngestService(self.db).recompute_day(profile_id, day)
         await self.db.commit()
         return True
 
@@ -1095,9 +1158,14 @@ class EmployeeService:
         user.employee_profile = profile
         return True
 
-    async def _get_profile(self, employee_user_id: str) -> EmployeeProfileModel:
-        """Resolve employee user_id → EmployeeProfileModel, raising 404 if not found."""
-        user = await self.repo.get_employee_by_id(employee_user_id)
+    async def _get_profile(self, employee_user_id: str, staff: bool = False) -> EmployeeProfileModel:
+        """Resolve employee user_id → EmployeeProfileModel, raising 404 if not found.
+
+        `staff=True` also resolves admin accounts (attendance covers them)."""
+        if staff:
+            user = await self.repo.get_any_staff_by_id(employee_user_id)
+        else:
+            user = await self.repo.get_employee_by_id(employee_user_id)
         if not user or not user.employee_profile:
             raise NotFoundException("Employee not found.")
         return user.employee_profile

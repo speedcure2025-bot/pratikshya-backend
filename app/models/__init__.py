@@ -26,6 +26,8 @@ from app.models.employee.department import DepartmentModel                 # noq
 from app.models.employee.section import SectionModel                       # noqa: F401
 from app.models.employee.employee import EmployeeProfileModel              # noqa: F401
 from app.models.employee.attendance import AttendanceModel                 # noqa: F401
+from app.models.employee.attendance_device import AttendanceDeviceModel     # noqa: F401
+from app.models.employee.attendance_punch import AttendancePunchModel       # noqa: F401
 from app.models.employee.performance import PerformanceModel               # noqa: F401
 from app.models.employee.target import TargetModel                         # noqa: F401
 

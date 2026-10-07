@@ -44,6 +44,7 @@ SETTINGS_DEFAULTS: Dict[str, Any] = {
         "lateThresholdMinutes": 10,
         "minimumHalfDayMinutes": 240,
         "fullDayMinutes": 540,
+        "webPunchEnabled": True,
     },
     "holidays": {"list": []},
     "tax": {

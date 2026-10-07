@@ -774,7 +774,7 @@ async def create_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_staff_permission_any(admin, db, "attendance.correct", "employees.edit")
+    await require_staff_permission(admin, db, "attendance.correct")
     req.employee_id = employee_id
     service = EmployeeService(db)
     record = await service.create_attendance(req, actor=admin)
@@ -795,7 +795,7 @@ async def list_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_staff_permission_any(admin, db, "attendance.view", "employees.view")
+    await require_staff_permission(admin, db, "attendance.view")
     service = EmployeeService(db)
     try:
         parsed_from = date_t.fromisoformat(date_from) if date_from else None
@@ -825,7 +825,7 @@ async def update_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_staff_permission_any(admin, db, "attendance.correct", "employees.edit")
+    await require_staff_permission(admin, db, "attendance.correct")
     service = EmployeeService(db)
     record = await service.update_attendance(attendance_id, req, actor=admin)
     return DataResponse(data=AttendanceResponse.model_validate(record), message="Attendance updated.")
@@ -841,7 +841,7 @@ async def delete_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_staff_permission_any(admin, db, "attendance.manage", "employees.edit")
+    await require_staff_permission(admin, db, "attendance.manage")
     service = EmployeeService(db)
     await service.delete_attendance(attendance_id, actor=admin)
     return BaseResponse(message="Attendance record deleted.")

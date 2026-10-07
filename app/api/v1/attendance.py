@@ -15,6 +15,19 @@ surfaces live on /admin/employees/{id}/attendance in employees.py):
 
 Authorization is the shared capability surface (`require_staff_permission`);
 business legality is `workforce_rules`. No second engine, no second log.
+
+Access rules: employees reach ONLY their own records (the /employee/* routes
+read the identity from the token and never accept an employee id). The
+/admin/* routes below are admin-account only (SUPER_ADMIN and ADMIN see every
+employee).
+
+Machine management (admin accounts, `attendance.manage`):
+
+  GET   /admin/attendance/devices                       → registered punching machines
+  POST  /admin/attendance/devices          {serialNumber,label}
+  PATCH /admin/attendance/devices/{id}     {label?,isActive?}
+  GET   /admin/attendance/unmapped-punches              → machine IDs not linked to anyone
+  PUT   /admin/attendance/device-pin/{employee}  {devicePin}  → link a machine ID
 """
 
 from datetime import date as date_t
@@ -32,13 +45,20 @@ from app.dependencies import (
 )
 from app.models.auth.user import UserModel
 from app.schemas.employee.workforce import (
+    DeviceCreateRequest,
+    DeviceDto,
+    DevicePinRequest,
+    DevicePinResult,
+    DeviceUpdateRequest,
     MyAttendanceResponse,
     PunchRequest,
     PunchResult,
     TodayAttendanceResponse,
+    UnmappedPinDto,
     WorkforceAttendanceDto,
 )
 from app.services.employee import workforce_rules as rules
+from app.services.employee.attendance_ingest_service import AttendanceIngestService
 from app.services.employee.workforce_service import WorkforceService
 
 router = APIRouter(tags=["Employee Attendance"])
@@ -59,9 +79,12 @@ async def employee_check_in(
     db: AsyncSession = Depends(get_db),
     me: UserModel = Depends(get_current_employee),
 ):
-    await require_staff_permission(me, db, "attendance.checkin")
+    # Canonical camelCase code (rbac.EMPLOYEE_SELF_SERVICE_PERMISSIONS). The old
+    # lowercase spelling never matched a granted code, so non-wildcard
+    # employees were refused.
+    await require_staff_permission(me, db, "attendance.checkIn")
     service = WorkforceService(db)
-    return await service.punch_in(me, req.at)
+    return await service.punch_in(me)
 
 
 @router.post(
@@ -74,9 +97,9 @@ async def employee_check_out(
     db: AsyncSession = Depends(get_db),
     me: UserModel = Depends(get_current_employee),
 ):
-    await require_staff_permission(me, db, "attendance.checkout")
+    await require_staff_permission(me, db, "attendance.checkOut")
     service = WorkforceService(db)
-    return await service.punch_out(me, req.at)
+    return await service.punch_out(me)
 
 
 @router.get(
@@ -116,9 +139,9 @@ async def employee_attendance_history(
     response_model=MyAttendanceResponse,
     summary="Supervisor/Admin — attendance rows for one day (bounded)",
     description=(
-        "Requires `attendance.view` and account-manager scope (Admin workspace "
-        "or a SUPER_EMPLOYEE). Returns every recorded row for the date; empty "
-        "means nobody has a row yet — never fabricated rows."
+        "Requires `attendance.view` on an Admin account (SUPER_ADMIN or ADMIN). "
+        "Returns every recorded row for the date plus computed ABSENT / "
+        "NOT_CHECKED_IN / LEAVE rows (`synthetic: true`) for staff with no record."
     ),
 )
 async def admin_attendance_day(
@@ -132,16 +155,106 @@ async def admin_attendance_day(
         day = date_t.fromisoformat(date) if date else rules.day_of(rules.store_now())
     except ValueError:
         raise BusinessLogicException("date must be YYYY-MM-DD")
+    # Finished days that still lack a check-out are flagged for correction.
+    await AttendanceIngestService(db).sweep_open_days()
     rows = await service.day_roster(day, await service.settings())
     return MyAttendanceResponse(
         items=rows,
         summary={
-            "present": sum(1 for r in rows if r["status"] in ("PRESENT", "LATE")),
+            "present": sum(1 for r in rows if r["status"] in ("PRESENT", "LATE", "ON_DUTY")),
             "late": sum(1 for r in rows if r["status"] == "LATE"),
             "halfDay": sum(1 for r in rows if r["status"] == "HALF_DAY"),
             "onLeave": sum(1 for r in rows if r["status"] == "LEAVE"),
             "absent": sum(1 for r in rows if r["status"] == "ABSENT"),
-            "other": sum(1 for r in rows if r["status"] not in ("PRESENT", "LATE", "HALF_DAY", "LEAVE", "ABSENT")),
+            "notCheckedIn": sum(1 for r in rows if r["status"] == "NOT_CHECKED_IN"),
+            "pendingCorrection": sum(1 for r in rows if r["status"] == "PENDING_CORRECTION"),
+            "other": sum(
+                1
+                for r in rows
+                if r["status"]
+                not in (
+                    "PRESENT", "LATE", "ON_DUTY", "HALF_DAY", "LEAVE", "ABSENT",
+                    "NOT_CHECKED_IN", "PENDING_CORRECTION",
+                )
+            ),
             "totalWorkMinutes": sum(r["workMinutes"] for r in rows),
         },
     )
+
+
+# ── Punching machines (admin accounts) ─────────────────────────────────────────────────
+
+
+@router.get(
+    "/admin/attendance/devices",
+    response_model=list[DeviceDto],
+    summary="Admin — registered punching machines",
+)
+async def admin_list_devices(
+    db: AsyncSession = Depends(get_db),
+    actor: UserModel = Depends(get_current_account_manager),
+):
+    await require_staff_permission(actor, db, "attendance.manage")
+    return await AttendanceIngestService(db).list_devices()
+
+
+@router.post(
+    "/admin/attendance/devices",
+    response_model=DeviceDto,
+    status_code=201,
+    summary="Admin — register a punching machine by serial number",
+)
+async def admin_create_device(
+    req: DeviceCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: UserModel = Depends(get_current_account_manager),
+):
+    await require_staff_permission(actor, db, "attendance.manage")
+    return await AttendanceIngestService(db).create_device(req.serialNumber, req.label, actor.id)
+
+
+@router.patch(
+    "/admin/attendance/devices/{device_id}",
+    response_model=DeviceDto,
+    summary="Admin — rename or switch a machine on/off",
+)
+async def admin_update_device(
+    device_id: str,
+    req: DeviceUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: UserModel = Depends(get_current_account_manager),
+):
+    await require_staff_permission(actor, db, "attendance.manage")
+    return await AttendanceIngestService(db).update_device(device_id, req.label, req.isActive, actor.id)
+
+
+@router.get(
+    "/admin/attendance/unmapped-punches",
+    response_model=list[UnmappedPinDto],
+    summary="Admin — machine IDs that punched but are not linked to an employee",
+)
+async def admin_unmapped_punches(
+    db: AsyncSession = Depends(get_db),
+    actor: UserModel = Depends(get_current_account_manager),
+):
+    await require_staff_permission(actor, db, "attendance.manage")
+    return await AttendanceIngestService(db).unmapped_pins()
+
+
+@router.put(
+    "/admin/attendance/device-pin/{employee_id}",
+    response_model=DevicePinResult,
+    summary="Admin — link (or clear) an employee's machine ID",
+    description=(
+        "Linking attaches every earlier unmapped punch with that machine ID to the "
+        "employee and rebuilds the affected days."
+    ),
+)
+async def admin_set_device_pin(
+    employee_id: str,
+    req: DevicePinRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: UserModel = Depends(get_current_account_manager),
+):
+    await require_staff_permission(actor, db, "attendance.manage")
+    return await AttendanceIngestService(db).set_device_pin(employee_id, req.devicePin, actor.id)

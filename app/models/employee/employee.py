@@ -29,6 +29,8 @@ class EmployeeProfileModel(Base):
     section_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("employee_section.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # User ID enrolled on the punching machines (what the device sends as PIN).
+    device_pin: Mapped[Optional[str]] = mapped_column(String(32), unique=True, index=True, nullable=True)
 
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="employee_profile")
     attendance_records: Mapped[List["AttendanceModel"]] = relationship(

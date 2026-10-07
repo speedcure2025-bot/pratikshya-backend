@@ -11,6 +11,7 @@ from app.core.middleware import setup_middleware
 from app.core.redis import close_redis, init_redis
 import app.models  # noqa: F401 — ensures all SQLAlchemy models are registered before mapper config
 from app.api.v1.router import api_router
+from app.api.v1.iclock import router as iclock_router
 
 # Main application entry point — PRATIKSHYA FASHION API (schema synced)
 logger = get_logger("app.main")
@@ -67,6 +68,8 @@ register_error_handlers(app)
 # The mount prefix is read from settings so the media-URL builder
 # (settings.media_url_prefix_absolute) and the router cannot drift apart.
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+# Punching machines call fixed root paths (/iclock/cdata ...), outside /api/v1.
+app.include_router(iclock_router)
 
 
 @app.get("/health", tags=["System"])

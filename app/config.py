@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # Mount prefix for the versioned API (main.py uses the same value, so the
     # media URL builder and the router can never drift apart).
     API_V1_PREFIX: str = "/api/v1"
+    # Punching machines (ADMS push, /iclock/*). Optional comma-separated source
+    # IPs allowed to push; empty = any IP (registered serial numbers still
+    # required). Behind a reverse proxy, allow the proxy's address instead.
+    ADMS_ALLOWED_IPS: str = ""
     # Optional CDN origin. When set, `url_for(key)` returns `{cdn}/{key}`
     # instead of the API media route — the CDN then fronts the object store
     # directly. Left empty in this phase: no CDN is provisioned.

@@ -13,7 +13,7 @@ import logging
 from datetime import date as date_t, datetime, time as time_t
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from sqlalchemy import func, inspect as sa_inspect, select
+from sqlalchemy import func, inspect as sa_inspect, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -116,6 +116,10 @@ class WorkforceService:
             check_in = datetime.combine(day, record.check_in) if record.check_in else None
             check_out = datetime.combine(day, record.check_out) if record.check_out else None
             timing = rules.evaluate_timing(day, check_in, check_out, settings)
+            # Machine days store the paired result (lunch gap excluded); legacy
+            # rows have NULLs and fall back to the in→out span.
+            if record.worked_minutes is not None:
+                timing["workMinutes"] = record.worked_minutes
             out.append(
                 {
                     "attendanceId": record.id,
@@ -127,6 +131,9 @@ class WorkforceService:
                     "status": record.status,
                     "notes": record.notes,
                     "updatedAt": record.updated_at,
+                    "punchCount": record.punch_count,
+                    "exception": record.exception,
+                    "source": record.source,
                     **timing,
                 }
             )
@@ -182,10 +189,17 @@ class WorkforceService:
     #  Attendance — self punches                                         #
     # ------------------------------------------------------------------ #
 
-    async def punch_in(self, user: UserModel, at: Optional[str]) -> dict:
+    def _require_web_punch(self, settings: Dict[str, Any]) -> None:
+        if not settings.get("webPunchEnabled", True):
+            raise ForbiddenException("Attendance is recorded at the punching machine. Web punch is switched off.")
+
+    async def punch_in(self, user: UserModel, at: Optional[str] = None) -> dict:
+        # `at` is accepted for API compatibility and IGNORED: an employee can
+        # never choose the time of their own punch. Server store clock only.
         profile = await self._profile_for_user(user)
         settings = await self.settings()
-        when = rules.to_store_wallclock(at) if at else rules.store_now()
+        self._require_web_punch(settings)
+        when = rules.store_now()
         day = rules.day_of(when)
 
         if day > rules.day_of(rules.store_now()):
@@ -199,6 +213,10 @@ class WorkforceService:
                 )
             )
         ).scalars().first()
+        if record is not None and record.source in ("DEVICE", "ADMIN"):
+            raise ConflictException(
+                "Today's attendance is recorded by the punching machine or set by an administrator."
+            )
         if record is not None and record.check_in is not None:
             raise ConflictException("You are already checked in for today.")
 
@@ -224,12 +242,18 @@ class WorkforceService:
                 attendance_date=day,
                 check_in=check_in_time,
                 status=status,
+                source="WEB",
+                late_minutes=timing["lateMinutes"],
+                punch_count=1,
             )
             self.db.add(record)
         else:
             record.check_in = check_in_time
             record.check_out = None
             record.status = status
+            record.source = "WEB"
+            record.late_minutes = timing["lateMinutes"]
+            record.punch_count = 1
         await self._audit("ATTENDANCE_CHECKED_IN", user.id, profile.employee_code)
         await self.db.commit()
         await self.db.refresh(record)
@@ -243,10 +267,12 @@ class WorkforceService:
             ),
         }
 
-    async def punch_out(self, user: UserModel, at: Optional[str]) -> dict:
+    async def punch_out(self, user: UserModel, at: Optional[str] = None) -> dict:
+        # `at` ignored — see punch_in.
         profile = await self._profile_for_user(user)
         settings = await self.settings()
-        when = rules.to_store_wallclock(at) if at else rules.store_now()
+        self._require_web_punch(settings)
+        when = rules.store_now()
         day = rules.day_of(when)
 
         record = (
@@ -259,6 +285,10 @@ class WorkforceService:
         ).scalars().first()
         if record is None or record.check_in is None:
             raise ConflictException("Check in before you check out.")
+        if record.source in ("DEVICE", "ADMIN"):
+            raise ConflictException(
+                "Today's attendance is recorded by the punching machine or set by an administrator."
+            )
         if record.check_out is not None:
             raise ConflictException("You have already checked out today.")
 
@@ -271,6 +301,10 @@ class WorkforceService:
         timing = rules.evaluate_timing(day, check_in_dt, check_out_dt, settings)
         record.check_out = check_out_dt.time()
         record.status = status
+        record.worked_minutes = timing["workMinutes"]
+        record.late_minutes = timing["lateMinutes"]
+        record.early_leave_minutes = timing["earlyLeaveMinutes"]
+        record.punch_count = 2
         await self._audit("ATTENDANCE_CHECKED_OUT", user.id, profile.employee_code)
         await self.db.commit()
         await self.db.refresh(record)
@@ -570,7 +604,16 @@ class WorkforceService:
             )
         ).scalars().all()
         for row in rows:
+            profile_id, day = row.employee_id, row.attendance_date
+            had_punch_flag = row.exception == "PUNCH_ON_LEAVE"
             await self.db.delete(row)
+            if had_punch_flag:
+                # The machine did record this day: rebuild it from the raw punches
+                # instead of leaving a hole where the leave row used to be.
+                await self.db.flush()
+                from app.services.employee.attendance_ingest_service import AttendanceIngestService
+
+                await AttendanceIngestService(self.db).recompute_day(profile_id, day)
 
     # ------------------------------------------------------------------ #
     #  Performance                                                       #
@@ -728,6 +771,10 @@ class WorkforceService:
     # ------------------------------------------------------------------ #
 
     async def day_roster(self, day: date_t, settings: Dict[str, Any]) -> List[dict]:
+        """Every staff member for one day: recorded rows PLUS synthetic rows for
+        people with no record (ABSENT on a finished working day, NOT_CHECKED_IN
+        today, LEAVE when approved). Weekly offs and holidays add no rows.
+        Synthetic rows carry `synthetic: True` and are never written to the DB."""
         rows = (
             await self.db.execute(
                 self._base_select(AttendanceModel)
@@ -736,7 +783,72 @@ class WorkforceService:
                 .limit(MAX_PAGE_SIZE * 4)
             )
         ).all()
-        return await self._attendance_dtos(rows)
+        items = await self._attendance_dtos(rows)
+        for item in items:
+            item["synthetic"] = False
+
+        if rules.calendar_status(day, settings):
+            return items
+
+        recorded = {item["employeeId"] for item in items}
+        staff = (
+            await self.db.execute(
+                select(EmployeeProfileModel.id, EmployeeProfileModel.employee_code, UserModel.full_name, EmployeeProfileModel.created_at)
+                .join(UserModel, UserModel.id == EmployeeProfileModel.user_id)
+                .where(
+                    UserModel.status == "ACTIVE",
+                    UserModel.user_type.in_(("employee", "admin")),
+                    # The system owner is not on the attendance/payroll roster.
+                    or_(UserModel.account_level.is_(None), UserModel.account_level != "SUPER_ADMIN"),
+                )
+                .order_by(EmployeeProfileModel.employee_code.asc())
+                .limit(MAX_PAGE_SIZE * 5)
+            )
+        ).all()
+        today = rules.day_of(rules.store_now())
+        on_leave = set(
+            (
+                await self.db.execute(
+                    select(LeaveModel.employee_id).where(
+                        LeaveModel.status == "APPROVED",
+                        LeaveModel.start_date <= day,
+                        LeaveModel.end_date >= day,
+                    )
+                )
+            ).scalars().all()
+        )
+        for profile_id, code, full_name, created_at in staff:
+            if code in recorded:
+                continue
+            if created_at is not None and rules.day_of(rules.to_store_naive(created_at)) > day:
+                continue  # not on the roster yet
+            if profile_id in on_leave:
+                status = "LEAVE"
+            elif day < today:
+                status = "ABSENT"
+            else:
+                status = "NOT_CHECKED_IN"
+            items.append(
+                {
+                    "attendanceId": f"synthetic-{code}-{day.isoformat()}",
+                    "employeeId": code,
+                    "employeeName": full_name,
+                    "date": day,
+                    "checkIn": None,
+                    "checkOut": None,
+                    "status": status,
+                    "notes": None,
+                    "updatedAt": None,
+                    "lateMinutes": 0,
+                    "workMinutes": 0,
+                    "earlyLeaveMinutes": 0,
+                    "punchCount": 0,
+                    "exception": None,
+                    "source": None,
+                    "synthetic": True,
+                }
+            )
+        return items
 
     # ------------------------------------------------------------------ #
 

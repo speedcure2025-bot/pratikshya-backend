@@ -40,6 +40,15 @@ class WorkforceAttendanceDto(BaseModel):
     earlyLeaveMinutes: int = 0
     notes: Optional[str] = None
     updatedAt: Optional[datetime] = None
+    punchCount: Optional[int] = None
+    exception: Optional[str] = Field(
+        default=None,
+        description="MISSING_OUT | ODD_PUNCHES | PUNCH_ON_LEAVE | WEB_AND_DEVICE | null",
+    )
+    source: Optional[str] = Field(default=None, description="DEVICE | WEB | ADMIN")
+    synthetic: bool = Field(
+        default=False, description="True for a computed row (absent / not yet in) that is not stored"
+    )
 
 
 class PunchResult(BaseModel):
@@ -56,8 +65,51 @@ class AttendanceSummary(BaseModel):
     halfDay: int = 0
     onLeave: int = 0
     absent: int = 0
+    notCheckedIn: int = 0
+    pendingCorrection: int = 0
     other: int = 0
     totalWorkMinutes: int = 0
+
+
+# ── Machines ───────────────────────────────────────────────────────────────────────────────
+
+
+class DeviceCreateRequest(BaseModel):
+    serialNumber: str
+    label: str = ""
+
+
+class DeviceUpdateRequest(BaseModel):
+    label: Optional[str] = None
+    isActive: Optional[bool] = None
+
+
+class DeviceDto(BaseModel):
+    deviceId: str
+    serialNumber: str
+    label: str = ""
+    isActive: bool = True
+    lastSeenAt: Optional[datetime] = None
+
+
+class DevicePinRequest(BaseModel):
+    devicePin: Optional[str] = Field(
+        default=None, description="User ID enrolled on the machine; null/empty clears the mapping"
+    )
+
+
+class DevicePinResult(BaseModel):
+    employeeId: str
+    devicePin: Optional[str] = None
+    attachedPunches: int = 0
+
+
+class UnmappedPinDto(BaseModel):
+    devicePin: str
+    deviceSerial: Optional[str] = None
+    punches: int
+    firstAt: Optional[datetime] = None
+    lastAt: Optional[datetime] = None
 
 
 class MyAttendanceResponse(BaseModel):
