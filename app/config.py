@@ -184,6 +184,12 @@ class Settings(BaseSettings):
     ADMIN_SEED_PASSWORD: Optional[str] = None
     ADMIN_SEED_FULL_NAME: str = "Super Admin"
 
+    # ── Instagram Customer Reward Coupon ─────────────────────────────────────
+    # Discount percentage awarded to customers who post about their purchase
+    # on Instagram and tag the official Pratikshya Fashion account.
+    # Must be > 0 and ≤ 100. Never hardcode this value in service logic.
+    INSTAGRAM_REWARD_DISCOUNT_PERCENT: float = 10.0
+
     # ── Parsed list accessors ────────────────────────────────────────────────
     # Keep the raw fields as strings so .env files can use simple CSV values;
     # these properties are the typed accessors used by the rest of the app.
@@ -278,6 +284,21 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SECRET_KEY must be set to a strong secret in production. "
                 "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        return v
+
+    @field_validator("INSTAGRAM_REWARD_DISCOUNT_PERCENT")
+    @classmethod
+    def validate_instagram_reward_discount(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError(
+                "INSTAGRAM_REWARD_DISCOUNT_PERCENT must be greater than 0. "
+                "Set a positive percentage (e.g. 10 for 10% off)."
+            )
+        if v > 100:
+            raise ValueError(
+                "INSTAGRAM_REWARD_DISCOUNT_PERCENT cannot exceed 100. "
+                "Provide a value between 0 (exclusive) and 100 (inclusive)."
             )
         return v
 

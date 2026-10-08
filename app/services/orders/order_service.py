@@ -849,7 +849,31 @@ class OrderService:
         """
         if order.payment_status in ("PENDING", "PENDING_PAYMENT", "FAILED", "PAYMENT_FAILED"):
             await self._release_stock_reservation(order)
+            await self._release_coupon_reservation(order)
         await self._cancel_active_payment_sessions(order)
+
+    async def _release_coupon_reservation(self, order: OrderModel) -> None:
+        """Release coupon usage if order is cancelled before payment completion."""
+        from app.models.commerce.coupon import CouponModel
+        from app.models.commerce.coupon_redemption import CouponRedemptionModel
+
+        if not order.coupon_id:
+            return
+        res = await self.db.execute(
+            select(CouponModel).where(CouponModel.id == order.coupon_id).with_for_update()
+        )
+        coupon = res.scalars().first()
+        if coupon and (coupon.usage_count or 0) > 0:
+            coupon.usage_count = max(0, coupon.usage_count - 1)
+
+        red_res = await self.db.execute(
+            select(CouponRedemptionModel).where(
+                CouponRedemptionModel.coupon_id == order.coupon_id,
+                CouponRedemptionModel.order_id == order.id,
+            )
+        )
+        for red in red_res.scalars().all():
+            await self.db.delete(red)
 
     async def _release_stock_reservation(self, order: OrderModel) -> None:
         """Return reserved quantity to `catalog_product.stock` (row-locked)."""

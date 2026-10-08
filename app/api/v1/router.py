@@ -40,6 +40,7 @@ from app.api.v1.styling import router as styling_router
 from app.api.v1.support import router as support_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.recommendations import router as recommendations_router
+from app.api.v1.instagram_rewards import router as instagram_rewards_router
 
 api_router = APIRouter()
 
@@ -60,7 +61,9 @@ api_router.include_router(addresses_router)
 api_router.include_router(cart_router)
 api_router.include_router(wishlist_router)
 api_router.include_router(coupons_router)
+api_router.include_router(instagram_rewards_router)
 api_router.include_router(checkout_router)
+
 api_router.include_router(payments_router)
 api_router.include_router(orders_router)
 api_router.include_router(returns_router)

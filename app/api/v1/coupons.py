@@ -196,7 +196,11 @@ def _coupon_to_dict(c: CouponModel) -> dict:
 # Validation helper
 # ---------------------------------------------------------------------------
 
-def _validate_coupon_logic(coupon: CouponModel, cart_subtotal: int = 0) -> Optional[str]:
+def _validate_coupon_logic(
+    coupon: CouponModel,
+    cart_subtotal: int = 0,
+    customer_id: Optional[str] = None,
+) -> Optional[str]:
     """Return an error string if the coupon is not valid, else None."""
     now = datetime.now(timezone.utc)
     if not coupon.is_active:
@@ -205,10 +209,13 @@ def _validate_coupon_logic(coupon: CouponModel, cart_subtotal: int = 0) -> Optio
         return "This coupon is not yet valid."
     if coupon.expires_at and coupon.expires_at < now:
         return "This coupon has expired."
-    if coupon.usage_limit is not None and coupon.usage_count >= coupon.usage_limit:
+    if coupon.usage_limit is not None and (coupon.usage_count or 0) >= coupon.usage_limit:
         return "This coupon has reached its usage limit."
-    if cart_subtotal < coupon.minimum_order_value:
+    if cart_subtotal < (coupon.minimum_order_value or 0):
         return f"Minimum order of ₹{coupon.minimum_order_value} required for this coupon."
+    if coupon.eligible_customer_ids:
+        if not customer_id or customer_id not in coupon.eligible_customer_ids:
+            return "This coupon is restricted and not available for your account."
     return None
 
 
@@ -268,7 +275,8 @@ async def validate_offer(
         for item in (req.cart_items or [])
     )
 
-    error = _validate_coupon_logic(coupon, cart_subtotal=cart_subtotal)
+    eff_customer_id = current_user.id if current_user else req.customer_id
+    error = _validate_coupon_logic(coupon, cart_subtotal=cart_subtotal, customer_id=eff_customer_id)
     if error:
         raise BusinessLogicException(message=error)
 
