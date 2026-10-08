@@ -273,3 +273,45 @@ class BatchReconcileResponse(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+# ---------------------------------------------------------------------------
+# Admin — list payment sessions
+# ---------------------------------------------------------------------------
+
+class AdminPaymentSessionItem(BaseModel):
+    """Lightweight session row returned by GET /admin/payments."""
+    id: str
+    order_id: str = Field(..., alias="orderId")
+    order_number: Optional[str] = Field(None, alias="orderNumber")
+    customer_id: Optional[str] = Field(None, alias="customerId")
+    customer_name: Optional[str] = Field(None, alias="customerName")
+    customer_email: Optional[str] = Field(None, alias="customerEmail")
+    razorpay_order_id: Optional[str] = Field(None, alias="razorpayOrderId")
+    razorpay_payment_id: Optional[str] = Field(None, alias="razorpayPaymentId")
+    amount_paise: int = Field(..., alias="amountPaise")
+    amount_rupees: float = Field(..., alias="amountRupees")
+    refunded_amount_paise: int = Field(0, alias="refundedAmountPaise")
+    currency: str = "INR"
+    payment_method: str = Field(..., alias="paymentMethod")
+    status: str
+    paid_at: Optional[str] = Field(None, alias="paidAt")
+    cancelled_at: Optional[str] = Field(None, alias="cancelledAt")
+    failure_reason: Optional[str] = Field(None, alias="failureReason")
+    failure_code: Optional[str] = Field(None, alias="failureCode")
+    created_at: Optional[str] = Field(None, alias="createdAt")
+    updated_at: Optional[str] = Field(None, alias="updatedAt")
+    order_total: Optional[int] = Field(None, alias="orderTotal")
+
+    model_config = {"populate_by_name": True}
+
+
+class AdminPaymentListResponse(BaseModel):
+    ok: bool = True
+    sessions: list[AdminPaymentSessionItem]
+    total: int
+    page: int
+    page_size: int = Field(..., alias="pageSize")
+    status_counts: Optional[Dict[str, int]] = Field(None, alias="statusCounts")
+
+    model_config = {"populate_by_name": True}
+
+

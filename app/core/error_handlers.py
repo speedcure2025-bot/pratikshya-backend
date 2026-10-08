@@ -133,6 +133,13 @@ def register_error_handlers(app: FastAPI) -> None:
         @app.exception_handler(OperationalError)
         @app.exception_handler(DBAPIError)
         async def db_connection_exception_handler(request: Request, exc: Exception):
+            err_str = str(exc).lower()
+            if "does not exist" in err_str or "undefined" in err_str:
+                code = "DATABASE_SCHEMA_ERROR"
+                message = "A required database table or column is missing. Please run: alembic upgrade heads"
+            else:
+                code = "DATABASE_UNAVAILABLE"
+                message = "Database connection failed. Please ensure PostgreSQL is running."
             logger.error(
                 "Database error path=%s method=%s: %s",
                 request.url.path, request.method, str(exc),
@@ -142,8 +149,8 @@ def register_error_handlers(app: FastAPI) -> None:
                 content={
                     "success": False,
                     "error": {
-                        "code": "DATABASE_UNAVAILABLE",
-                        "message": "Database connection failed. Please ensure PostgreSQL is running.",
+                        "code": code,
+                        "message": message,
                         "details": {},
                     },
                 },

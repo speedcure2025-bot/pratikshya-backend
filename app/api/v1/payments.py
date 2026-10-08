@@ -37,7 +37,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.dependencies import get_current_customer, get_db, get_optional_user
+from app.dependencies import get_current_admin, get_current_customer, get_db, get_optional_user, require_admin_permission
 from app.models.auth.user import UserModel
 from app.schemas.payments.payment import (
     BatchReconcileRequest,
@@ -80,13 +80,13 @@ router = APIRouter(prefix="/payments", tags=["Payments & Gateway"])
 async def refund_payment_session(
     session_id: str,
     req: RefundPaymentRequest,
-    current_user: Optional[UserModel] = Depends(get_optional_user),
+    current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    is_admin = bool(current_user and current_user.role in ("ADMIN", "SUPERADMIN"))
+    await require_admin_permission(current_user, db, "orders.manage")
     logger.info(
-        "API POST /payments/session/%s/refund initiated user_id=%s is_admin=%s amount_paise=%s reason=%s",
-        session_id, current_user.id if current_user else None, is_admin, req.amount_paise, req.reason,
+        "API POST /payments/session/%s/refund initiated user_id=%s amount_paise=%s reason=%s",
+        session_id, current_user.id, req.amount_paise, req.reason,
     )
 
     service = PaymentService(db)
@@ -95,7 +95,7 @@ async def refund_payment_session(
         amount_paise=req.amount_paise,
         reason=req.reason,
         idempotency_key=req.idempotency_key,
-        is_admin=is_admin,
+        is_admin=current_user.account_level in ("ADMIN", "SUPER_ADMIN"),
     )
 
     logger.info(
@@ -492,25 +492,21 @@ async def razorpay_webhook(
 )
 async def reconcile_batch(
     req: BatchReconcileRequest = BatchReconcileRequest(),
-    current_user: Optional[UserModel] = Depends(get_optional_user),
+    current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.core.exceptions import ForbiddenException
+    await require_admin_permission(current_user, db, "orders.manage")
 
     logger.info(
-        "API POST /payments/reconcile-batch requested limit=%s session_ids_count=%s user_id=%s role=%s",
-        req.limit, len(req.session_ids) if req.session_ids else 0, current_user.id if current_user else None, current_user.role if current_user else None,
+        "API POST /payments/reconcile-batch requested limit=%s session_ids_count=%s user_id=%s",
+        req.limit, len(req.session_ids) if req.session_ids else 0, current_user.id,
     )
-
-    if not current_user or current_user.role not in ("ADMIN", "SUPERADMIN"):
-        logger.warning("API POST /payments/reconcile-batch rejected: non-admin user")
-        raise ForbiddenException("Admin privileges required for payment reconciliation.")
 
     service = PaymentService(db)
     result = await service.reconcile_batch(
         limit=req.limit,
         session_ids=req.session_ids,
-        is_admin=True,  # already verified above
+        is_admin=current_user.account_level in ("ADMIN", "SUPER_ADMIN"),
     )
 
     logger.info(

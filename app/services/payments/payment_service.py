@@ -1439,6 +1439,7 @@ class PaymentService:
                 "session_id": session.id,
                 "order_id": session.order_id,
                 "db_status": session.status,
+                "session_status": session.status,
                 "razorpay_status": "NONE",
                 "reconciled": False,
                 "requires_admin_review": False,
@@ -1470,6 +1471,7 @@ class PaymentService:
                     "session_id": session.id,
                     "order_id": session.order_id,
                     "db_status": session.status,
+                    "session_status": session.status,
                     "razorpay_status": "CAPTURED",
                     "reconciled": False,
                     "requires_admin_review": True,
@@ -1490,6 +1492,7 @@ class PaymentService:
                 "session_id": session.id,
                 "order_id": session.order_id,
                 "db_status": "PAID",
+                "session_status": "PAID",
                 "razorpay_status": "CAPTURED",
                 "reconciled": True,
                 "requires_admin_review": False,
@@ -1514,6 +1517,7 @@ class PaymentService:
                 "session_id": session.id,
                 "order_id": session.order_id,
                 "db_status": "REFUNDED",
+                "session_status": "REFUNDED",
                 "razorpay_status": "REFUNDED",
                 "reconciled": True,
                 "requires_admin_review": False,
@@ -1530,6 +1534,7 @@ class PaymentService:
                 "session_id": session.id,
                 "order_id": session.order_id,
                 "db_status": session.status,
+                "session_status": session.status,
                 "razorpay_status": razorpay_status,
                 "reconciled": False,
                 "requires_admin_review": True,
@@ -1541,6 +1546,7 @@ class PaymentService:
             "session_id": session.id,
             "order_id": session.order_id,
             "db_status": session.status,
+            "session_status": session.status,
             "razorpay_status": razorpay_status,
             "reconciled": False,
             "requires_admin_review": False,
@@ -1606,3 +1612,103 @@ class PaymentService:
 
 
 
+
+    # ===========================================================================
+    # ADMIN — List payment sessions (joined with order + customer info)
+    # ===========================================================================
+
+    async def admin_list_sessions(
+        self,
+        status: Optional[str] = None,
+        order_id: Optional[str] = None,
+        payment_method: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> dict:
+        """
+        Return a paginated list of payment sessions joined with their orders
+        and optionally the customer's full name. Used by the admin payments desk.
+        """
+        from app.models.orders.order import OrderModel
+        from app.models.auth.user import UserModel
+        from sqlalchemy import func, outerjoin
+
+        # Base query — join session → order → user (LEFT OUTER so guest orders appear)
+        base_stmt = (
+            select(
+                PaymentSessionModel,
+                OrderModel.order_number,
+                OrderModel.customer_id,
+                OrderModel.guest_email,
+                OrderModel.total.label("order_total"),
+                UserModel.full_name.label("customer_name"),
+                UserModel.email.label("customer_email"),
+            )
+            .join(OrderModel, PaymentSessionModel.order_id == OrderModel.id)
+            .outerjoin(UserModel, OrderModel.customer_id == UserModel.id)
+        )
+
+        if status:
+            base_stmt = base_stmt.where(PaymentSessionModel.status == status)
+        if order_id:
+            base_stmt = base_stmt.where(PaymentSessionModel.order_id == order_id)
+        if payment_method:
+            base_stmt = base_stmt.where(PaymentSessionModel.payment_method == payment_method)
+
+        # Count total for pagination
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total_result = await self.db.execute(count_stmt)
+        total = total_result.scalar_one()
+
+        # Paginated results, newest first
+        offset = (page - 1) * page_size
+        data_stmt = (
+            base_stmt
+            .order_by(PaymentSessionModel.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        rows = await self.db.execute(data_stmt)
+        sessions = []
+        for row in rows:
+            ps = row[0]
+            sessions.append({
+                "id": ps.id,
+                "order_id": ps.order_id,
+                "order_number": row.order_number,
+                "customer_id": row.customer_id,
+                "customer_name": row.customer_name or row.guest_email or "Guest",
+                "customer_email": row.customer_email or row.guest_email,
+                "razorpay_order_id": ps.razorpay_order_id,
+                "razorpay_payment_id": ps.razorpay_payment_id,
+                "amount_paise": ps.amount_paise,
+                "amount_rupees": ps.amount_paise / 100,
+                "refunded_amount_paise": ps.refunded_amount_paise or 0,
+                "currency": ps.currency,
+                "payment_method": ps.payment_method,
+                "status": ps.status,
+                "paid_at": ps.paid_at.isoformat() if ps.paid_at else None,
+                "cancelled_at": ps.cancelled_at.isoformat() if ps.cancelled_at else None,
+                "expires_at": ps.expires_at.isoformat() if ps.expires_at else None,
+                "failure_reason": ps.failure_reason,
+                "failure_code": ps.failure_code,
+                "created_at": ps.created_at.isoformat() if ps.created_at else None,
+                "updated_at": ps.updated_at.isoformat() if ps.updated_at else None,
+                "order_total": row.order_total,
+            })
+
+        # Status breakdown counts (whole book, no filter)
+        counts_stmt = (
+            select(PaymentSessionModel.status, func.count().label("cnt"))
+            .group_by(PaymentSessionModel.status)
+        )
+        counts_rows = await self.db.execute(counts_stmt)
+        status_counts = {row.status: row.cnt for row in counts_rows}
+
+        return {
+            "sessions": sessions,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "status_counts": status_counts,
+        }

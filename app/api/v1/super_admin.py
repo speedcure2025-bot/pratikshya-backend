@@ -18,6 +18,10 @@ URL mapping:
   ─────────────────────────────────────────────────────────────────────────────
   POST   /super-admin/orders/{orderId}/force-status  ← bypass adjacency rules
 
+  Payments (Super Admin only)
+  ─────────────────────────────────────────────────────────────────────────────
+  GET    /super-admin/payments                       ← paginated session list
+
 Notes:
   - Settings reads (GET) are shared with plain admins and remain at
     GET /admin/settings[/{section}] in admin.py.
@@ -29,7 +33,7 @@ Notes:
     POST /super-admin/orders/{orderId}/force-status.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
@@ -42,7 +46,9 @@ from app.dependencies import get_current_super_admin, get_db
 from app.models.admin.setting import SettingModel
 from app.models.auth.user import UserModel
 from app.schemas.orders.order import AdminSingleOrderResponse, ForceStatusRequest
+from app.schemas.payments.payment import AdminPaymentListResponse, AdminPaymentSessionItem
 from app.services.orders.order_service import OrderService
+from app.services.payments.payment_service import PaymentService
 
 logger = get_logger(__name__)
 
@@ -221,6 +227,60 @@ async def get_super_admin_dashboard_summary(
         recent_limit=recent_limit,
         db=db,
         current_user=current_user,
+    )
+
+
+# ===========================================================================
+# PAYMENTS — Paginated list (Super Admin only)
+# ===========================================================================
+
+@router.get(
+    "/payments",
+    response_model=AdminPaymentListResponse,
+    summary="Super Admin — list payment sessions",
+    description=(
+        "Returns a paginated list of payment sessions joined with their "
+        "associated order and customer info.  \n\n"
+        "**Filters:** `orderId`, `status`, `paymentMethod`, `page`, `pageSize`.  \n\n"
+        "Authorization: **SUPER_ADMIN only** — plain Admin accounts receive 403."
+    ),
+)
+async def super_admin_list_payments(
+    order_id: Optional[str] = Query(None, alias="orderId"),
+    status: Optional[str] = Query(None),
+    payment_method: Optional[str] = Query(None, alias="paymentMethod"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200, alias="pageSize"),
+    current_user: UserModel = Depends(get_current_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    logger.info(
+        "API GET /super-admin/payments requested user_id=%s status=%s order_id=%s page=%s",
+        current_user.id, status, order_id, page,
+    )
+
+    service = PaymentService(db)
+    result = await service.admin_list_sessions(
+        status=status,
+        order_id=order_id,
+        payment_method=payment_method,
+        page=page,
+        page_size=page_size,
+    )
+
+    sessions = [AdminPaymentSessionItem(**s) for s in result["sessions"]]
+
+    logger.info(
+        "API GET /super-admin/payments returned total=%s page=%s",
+        result["total"], result["page"],
+    )
+
+    return AdminPaymentListResponse(
+        sessions=sessions,
+        total=result["total"],
+        page=result["page"],
+        pageSize=result["page_size"],
+        statusCounts=result.get("status_counts"),
     )
 
 

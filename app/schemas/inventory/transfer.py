@@ -1,10 +1,15 @@
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List
 
 
 class TransferLine(BaseModel):
-    sku: str
+    sku: Optional[str] = None
+    stock_id: Optional[str] = Field(None, alias="stockId")
     quantity: int
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class TransferBase(BaseModel):
@@ -24,4 +29,18 @@ class TransferResponse(TransferBase):
     from_warehouse_id: str
     to_warehouse_id: str
     status: str
+    notes: Optional[str] = None
+    lines: Optional[List[Dict[str, Any]]] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
+
+class TransferListResponse(BaseModel):
+    transfers: List[TransferResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class SingleTransferResponse(BaseModel):
+    transfer: TransferResponse
