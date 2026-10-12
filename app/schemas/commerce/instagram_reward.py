@@ -153,6 +153,11 @@ class InstagramRewardApproveRequest(BaseModel):
         le=100,
         description="Discount percentage for this coupon (e.g. 15 for 15%). Required — admin must decide.",
     )
+    minimum_order_value: float = Field(
+        0,
+        ge=0,
+        description="Minimum order subtotal required to use this coupon (0 = no minimum).",
+    )
     notes: Optional[str] = Field(
         None,
         max_length=500,
@@ -240,6 +245,11 @@ class InstagramRewardManualClaimRequest(BaseModel):
         gt=0,
         le=100,
         description="Discount percentage for this coupon. Required — admin must decide.",
+    )
+    minimum_order_value: float = Field(
+        0,
+        ge=0,
+        description="Minimum order subtotal required to use this coupon (0 = no minimum).",
     )
 
     model_config = ConfigDict(populate_by_name=True)

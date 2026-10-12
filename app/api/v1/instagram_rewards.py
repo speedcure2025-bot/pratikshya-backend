@@ -14,10 +14,11 @@ Endpoints for customer submission & status history alongside admin/staff verific
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException
+from app.core.middleware import limiter
 from app.dependencies import (
     get_current_customer,
     get_current_user,
@@ -65,7 +66,9 @@ async def get_current_staff_member(
         "The order must belong to the authenticated customer and be in a paid/completed state."
     ),
 )
+@limiter.limit("5/hour")
 async def submit_instagram_reward(
+    request: Request,
     payload: InstagramRewardSubmitRequest,
     current_customer: UserModel = Depends(get_current_customer),
     db: AsyncSession = Depends(get_db),

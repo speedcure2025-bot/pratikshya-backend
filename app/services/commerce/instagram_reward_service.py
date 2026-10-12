@@ -10,6 +10,7 @@ Handles:
 
 import secrets
 import string
+import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
@@ -59,16 +60,15 @@ class InstagramRewardService:
     async def _generate_unique_coupon_code(self, length: int = 8) -> str:
         """Generates a unique, collision-free reward coupon code."""
         alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # ambiguous chars omitted
-        for _ in range(10):
+        for _ in range(20):
             suffix = "".join(secrets.choice(alphabet) for _ in range(length))
-            candidate_code = f"INSTA-{suffix}"
+            candidate_code = f"LOYALTY-{suffix}"
             stmt = select(CouponModel.id).where(CouponModel.code == candidate_code)
             res = await self.session.execute(stmt)
             if res.scalar_one_or_none() is None:
                 return candidate_code
-        # Fallback with timestamp microsecond suffix if 10 collisions occur
-        micro = datetime.now(timezone.utc).strftime("%f")[:4]
-        return f"INSTA-REW-{micro}"
+        # Fallback: use a full UUID-derived suffix — collision-safe by construction
+        return f"LOYALTY-{str(uuid.uuid4()).replace('-', '').upper()[:12]}"
 
     # ── Helper: Rich Object Formatting ────────────────────────────────────────
 
@@ -290,11 +290,11 @@ class InstagramRewardService:
             description=f"{discount_pct}% reward coupon for tagging Pratikshya Fashion on Instagram.",
             discount_type="percentage",
             discount_value=discount_pct,
-            minimum_order_value=0,
+            minimum_order_value=float(payload.minimum_order_value) if payload and payload.minimum_order_value else 0,
             usage_limit=1,
             usage_count=0,
             per_customer_limit=1,
-            eligible_customer_ids=[reward.customer_id],  # Restricted exclusively to this customer
+            eligible_customer_ids=[reward.customer_id],
             is_stackable=False,
             is_active=True,
             created_by=verifier.id,
@@ -391,7 +391,112 @@ class InstagramRewardService:
 
         return await self._to_detail_response(reward)
 
-    # ── 4. Admin Re-open Flow ─────────────────────────────────────────────────
+    # ── Helper: Batch List Response (eliminates N+1) ─────────────────────────
+
+    async def _to_list_response(
+        self,
+        items: list,
+        total: int,
+        page: int,
+        limit: int,
+    ) -> InstagramRewardListResponse:
+        """
+        Builds a paginated list response with a fixed 4 queries total
+        regardless of how many rewards are in the page.
+        """
+        if not items:
+            return InstagramRewardListResponse(
+                items=[], total=total, page=page, limit=limit,
+                total_pages=(total + limit - 1) // limit if limit > 0 else 0,
+            )
+
+        # Collect unique IDs from the page
+        customer_ids = list({r.customer_id for r in items if r.customer_id})
+        order_ids    = list({r.order_id    for r in items if r.order_id})
+        verifier_ids = list({r.verified_by for r in items if r.verified_by})
+        coupon_ids   = list({r.coupon_id   for r in items if r.coupon_id})
+
+        # 1 query per related table (4 total, not 4×N)
+        customers = {}
+        if customer_ids:
+            res = await self.session.execute(
+                select(UserModel.id, UserModel.full_name, UserModel.email)
+                .where(UserModel.id.in_(customer_ids))
+            )
+            for row in res.all():
+                customers[row.id] = (row.full_name, row.email)
+
+        orders = {}
+        if order_ids:
+            res = await self.session.execute(
+                select(OrderModel.id, OrderModel.order_number)
+                .where(OrderModel.id.in_(order_ids))
+            )
+            for row in res.all():
+                orders[row.id] = row.order_number
+
+        verifiers = {}
+        if verifier_ids:
+            res = await self.session.execute(
+                select(UserModel.id, UserModel.full_name)
+                .where(UserModel.id.in_(verifier_ids))
+            )
+            for row in res.all():
+                verifiers[row.id] = row.full_name
+
+        coupons: dict = {}
+        if coupon_ids:
+            res = await self.session.execute(
+                select(CouponModel).where(CouponModel.id.in_(coupon_ids))
+            )
+            for coup in res.scalars().all():
+                coupons[coup.id] = InstagramRewardCouponResponse(
+                    id=coup.id,
+                    code=coup.code,
+                    discount_percentage=float(coup.discount_value),
+                    customer_id="",
+                    is_used=(coup.usage_count >= (coup.usage_limit or 1)),
+                    usage_limit=coup.usage_limit or 1,
+                    times_used=coup.usage_count,
+                    valid_until=coup.expires_at,
+                    created_at=coup.created_at,
+                )
+
+        # Assemble responses in memory
+        detail_items = []
+        for reward in items:
+            cust_name, cust_email = customers.get(reward.customer_id, (None, None))
+            coupon_resp = coupons.get(reward.coupon_id)
+            if coupon_resp and reward.customer_id:
+                coupon_resp = coupon_resp.model_copy(update={"customer_id": reward.customer_id})
+            detail_items.append(InstagramRewardDetailResponse(
+                id=reward.id,
+                customer_id=reward.customer_id,
+                customer_name=cust_name,
+                customer_email=cust_email,
+                order_id=reward.order_id,
+                order_number=orders.get(reward.order_id),
+                instagram_username=reward.instagram_username,
+                instagram_post_url=reward.instagram_post_url,
+                status=reward.status,
+                verified_by=reward.verified_by,
+                verifier_name=verifiers.get(reward.verified_by),
+                verified_at=reward.verified_at,
+                rejection_reason=reward.rejection_reason,
+                coupon_id=reward.coupon_id,
+                coupon_code=reward.coupon_code,
+                coupon=coupon_resp,
+                created_at=reward.created_at,
+                updated_at=reward.updated_at,
+            ))
+
+        total_pages = (total + limit - 1) // limit if limit > 0 else 0
+        return InstagramRewardListResponse(
+            items=detail_items, total=total, page=page,
+            limit=limit, total_pages=total_pages,
+        )
+
+
 
     async def reopen_reward(
         self,
@@ -453,16 +558,7 @@ class InstagramRewardService:
             limit=limit,
         )
 
-        detail_items = [await self._to_detail_response(item) for item in items]
-        total_pages = (total + limit - 1) // limit if limit > 0 else 0
-
-        return InstagramRewardListResponse(
-            items=detail_items,
-            total=total,
-            page=page,
-            limit=limit,
-            total_pages=total_pages,
-        )
+        return await self._to_list_response(items, total, page, limit)
 
     async def get_customer_rewards(
         self,
@@ -478,16 +574,7 @@ class InstagramRewardService:
             limit=limit,
         )
 
-        detail_items = [await self._to_detail_response(item) for item in items]
-        total_pages = (total + limit - 1) // limit if limit > 0 else 0
-
-        return InstagramRewardListResponse(
-            items=detail_items,
-            total=total,
-            page=page,
-            limit=limit,
-            total_pages=total_pages,
-        )
+        return await self._to_list_response(items, total, page, limit)
 
     # ── 5. Staff Manual Entry ─────────────────────────────────────────────────
 
@@ -524,6 +611,19 @@ class InstagramRewardService:
                 f"Order '{order.order_number or order.id}' does not belong to customer '{customer.email or customer.id}'"
             )
 
+        # 2b. Confirm order is in a paid/completed state (same rules as customer submission)
+        valid_payment_statuses = {"PAID"}
+        valid_order_statuses = {
+            "DELIVERED", "COMPLETED", "ORDER_CONFIRMED", "SHIPPED",
+            "DISPATCHED", "OUT_FOR_DELIVERY"
+        }
+        if order.payment_status not in valid_payment_statuses and order.status not in valid_order_statuses:
+            raise BusinessLogicException(
+                f"Order '{order.order_number or order.id}' is not eligible for a reward "
+                f"(status: {order.status}, payment: {order.payment_status}). "
+                "Order must be paid or completed."
+            )
+
         # 3. Check for existing approved reward for this order
         existing = await self.reward_repo.get_by_order_and_customer(
             order_id=order.id,
@@ -549,6 +649,7 @@ class InstagramRewardService:
             approve_req = InstagramRewardApproveRequest(
                 notes=payload.notes or "Manual staff entry claim",
                 discount_percentage=payload.discount_percentage,
+                minimum_order_value=payload.minimum_order_value,
             )
             return await self.approve_reward(
                 reward_id=reward.id,
