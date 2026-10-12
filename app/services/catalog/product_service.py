@@ -593,6 +593,7 @@ class ProductService:
     def _to_storefront(
         self, p: ProductModel, registered_media: Optional[List[Dict[str, Any]]] = None,
         collection_names: Optional[List[str]] = None,
+        subcategory_name_map: Optional[Dict[str, str]] = None,
     ) -> StorefrontProduct:
         """Project a ProductModel onto a StorefrontProduct DTO."""
         pricing = p.pricing or {}
@@ -601,6 +602,12 @@ class ProductService:
         effective_discount = computed.get("effectiveDiscountPercent", 0.0)
         original_price = p.original_price if (p.original_price and p.original_price > final_price) else None
         media_view = self._registered_media_view(registered_media or [])
+        # Resolve subcategory UUID → human-readable name so the storefront
+        # filter panel can display it directly without a secondary lookup.
+        raw_subcategory = p.subcategory or ""
+        resolved_subcategory = (
+            (subcategory_name_map or {}).get(raw_subcategory, raw_subcategory)
+        )
         return StorefrontProduct(
             id=p.id,
             productId=p.product_id or p.id,
@@ -610,7 +617,7 @@ class ProductService:
             brand=p.brand or "Pratikshya Fashion",
             productType=p.product_type or "fashion",
             category=p.category or "",
-            subcategory=p.subcategory or "",
+            subcategory=resolved_subcategory,
             gender=p.gender or "Women",
             shortDescription=p.short_description or "",
             description=p.description or "",
@@ -835,6 +842,12 @@ class ProductService:
             if subcategory.name:
                 status_map[subcategory.name] = subcategory.status
         return status_map
+
+    async def _subcategory_name_map(self) -> Dict[str, str]:
+        """Map subcategory id → name for resolving UUID references to labels."""
+        result = await self.db.execute(select(SubcategoryModel))
+        rows = result.scalars().all()
+        return {sub.id: sub.name for sub in rows if sub.id and sub.name}
 
     # ── The storefront visibility gate (Phase 3 §10 — API-180 / PF3-N06) ──────
     #
@@ -1197,6 +1210,7 @@ class ProductService:
         # products without associations keep their legacy columns untouched.
         registered_map = await self._registered_media_map([p.id for p in all_products])
         collection_map = await self._collection_membership_names(all_products)
+        sub_name_map = await self._subcategory_name_map()
 
         # Convert to storefront DTOs for in-memory filtering. Collection
         # membership is read from collection-owned data; the legacy scalar is
@@ -1206,6 +1220,7 @@ class ProductService:
                 p,
                 registered_map.get(p.id),
                 collection_map.get(str(p.id), []),
+                sub_name_map,
             )
             for p in all_products
         ]
@@ -1457,10 +1472,12 @@ class ProductService:
 
         registered = await self._registered_media_items(p.id)
         collection_names = await self._collection_membership_names_for_product(p)
+        sub_name_map = await self._subcategory_name_map()
         dto = self._to_storefront(
             p,
             registered,
             collection_names,
+            sub_name_map,
         )
         await cache.set_json(cache_key, dto.model_dump(), TTL_PRODUCT_DETAIL)
         return dto
@@ -1522,6 +1539,7 @@ class ProductService:
 
         registered_map = await self._registered_media_map(list(product_map.keys()))
         collection_map = await self._collection_membership_names(list(product_map.values()))
+        sub_name_map = await self._subcategory_name_map()
 
         # Preserve recency order (product_ids is already newest-first)
         return [
@@ -1529,6 +1547,7 @@ class ProductService:
                 product_map[pid],
                 registered_map.get(pid),
                 collection_map.get(str(pid), []),
+                sub_name_map,
             )
             for pid in product_ids
             if pid in product_map

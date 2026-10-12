@@ -442,7 +442,7 @@ async def upload_product_media_object(
     # Auto-register: create the MediaAssetModel row and ProductMediaModel
     # association in the same request so no DB record is ever left orphaned.
     media = _get_media_service(db)
-    key = stored.key
+    key = stored["key"]
     try:
         meta = await run_in_threadpool(media.object_metadata, key)
     except ObjectNotFoundError as exc:
