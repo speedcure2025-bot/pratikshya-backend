@@ -4,10 +4,13 @@ Inventory Stock — API router.
   Admin
   ──────────────────────────────────────────────────────────────
   GET  /admin/inventory/stock            ← list stock (filter: warehouse, low_stock, sku)
+  POST /admin/inventory/stock            ← create a new stock record for a product
   GET  /admin/inventory/stock/{id}       ← single stock item
   POST /admin/inventory/stock/adjust     ← adjust stock: { stockId, delta, type, reason }
   GET  /admin/inventory/movements        ← movement ledger (filter: stock_id, type, dates)
   GET  /admin/inventory/low-stock        ← items where available <= low_threshold
+
+  All routes resolve to /api/v1/admin/inventory/... (no extra router prefix).
 """
 
 from datetime import datetime
@@ -22,12 +25,13 @@ from app.schemas.inventory.stock import (
     MovementListResponse,
     SingleStockResponse,
     StockAdjustRequest,
+    StockCreateRequest,
     StockItemResponse,
     StockListResponse,
 )
 from app.services.inventory.inventory_service import InventoryService
 
-router = APIRouter(prefix="/inventory", tags=["Inventory Stock"])
+router = APIRouter(tags=["Inventory Stock"])
 
 
 # ===========================================================================
@@ -77,6 +81,39 @@ async def admin_list_stock(
         page=result["page"],
         page_size=result["page_size"],
     )
+
+
+# ===========================================================================
+# ADMIN — Create stock record
+# ===========================================================================
+
+@router.post(
+    "/admin/inventory/stock",
+    response_model=SingleStockResponse,
+    summary="Admin — create a stock record for a product",
+    description=(
+        "Authorization: `inventory.manage`.  \n"
+        "Creates a new `inventory_inventory_stock` row for the given product/variant/warehouse.  \n"
+        "Idempotent: returns the existing record if one already exists."
+    ),
+    status_code=201,
+)
+async def admin_create_stock(
+    req: StockCreateRequest,
+    current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_admin_permission(current_user, db, "inventory.manage")
+    service = InventoryService(db)
+    item = await service.create_stock_record(
+        product_id=req.product_id,
+        sku=req.sku,
+        variant_id=req.variant_id,
+        warehouse_id=req.warehouse_id,
+        on_hand=req.on_hand,
+        low_threshold=req.low_threshold,
+    )
+    return SingleStockResponse(item=StockItemResponse(**item))
 
 
 # ===========================================================================

@@ -12,6 +12,17 @@ class StockBase(BaseModel):
 # Request schemas
 # ---------------------------------------------------------------------------
 
+class StockCreateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    product_id: str = Field(..., alias="productId")
+    sku: str
+    variant_id: Optional[str] = Field(None, alias="variantId")
+    warehouse_id: Optional[str] = Field(None, alias="warehouseId")
+    on_hand: int = Field(0, alias="onHand", ge=0)
+    low_threshold: int = Field(5, alias="lowThreshold", ge=0)
+
+
 class StockAdjustRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

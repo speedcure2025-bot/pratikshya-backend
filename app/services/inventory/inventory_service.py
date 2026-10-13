@@ -23,6 +23,47 @@ class InventoryService:
     # Stock
     # -----------------------------------------------------------------------
 
+    async def create_stock_record(
+        self,
+        *,
+        product_id: str,
+        sku: str,
+        variant_id: Optional[str] = None,
+        warehouse_id: Optional[str] = None,
+        on_hand: int = 0,
+        low_threshold: int = 5,
+    ) -> dict[str, Any]:
+        """
+        Create a new stock record for a product/variant/warehouse combination.
+        Idempotent: returns the existing record if one already exists.
+        """
+        existing = (
+            await self.db.execute(
+                select(InventoryStockModel).where(
+                    InventoryStockModel.product_id == product_id,
+                    InventoryStockModel.variant_id == variant_id,
+                    InventoryStockModel.warehouse_id == warehouse_id,
+                )
+            )
+        ).scalars().first()
+
+        if existing:
+            return self._stock_to_dict(existing)
+
+        stock = InventoryStockModel(
+            product_id=product_id,
+            variant_id=variant_id,
+            sku=sku,
+            warehouse_id=warehouse_id,
+            on_hand=on_hand,
+            reserved=0,
+            available=on_hand,
+            low_threshold=low_threshold,
+        )
+        self.db.add(stock)
+        await self.db.flush()
+        return self._stock_to_dict(stock)
+
     async def list_stock(
         self,
         *,

@@ -48,6 +48,7 @@ from app.models.catalog.category import CategoryModel, SubcategoryModel
 from app.models.catalog.collection import CollectionModel
 from app.models.catalog.product import ProductModel
 from app.models.employee.employee import EmployeeProfileModel
+from app.services.inventory.inventory_service import InventoryService as _InventoryService
 from app.models.media.product_media import ProductMediaModel
 from app.services.media.product_media_records import (
     gallery_urls,
@@ -1803,6 +1804,12 @@ class ProductService:
         )
         self.db.add(product)
         await self.db.flush()
+        await _InventoryService(self.db).create_stock_record(
+            product_id=new_id,
+            sku=product.sku or "",
+            on_hand=int(data.get("stock") or 0),
+            low_threshold=int(data.get("low_stock_threshold") or 5),
+        )
         await self.invalidate_product_cache(new_id, product.slug)
         return self._to_admin(product)
 
@@ -1867,6 +1874,12 @@ class ProductService:
         )
         self.db.add(product)
         await self.db.flush()
+        await _InventoryService(self.db).create_stock_record(
+            product_id=req.id,
+            sku=product.sku or "",
+            on_hand=int(data.get("stock") or 0),
+            low_threshold=int(data.get("low_stock_threshold") or 5),
+        )
         await self.invalidate_product_cache(req.id, product.slug)
         return self._to_admin(product)
 

@@ -24,7 +24,7 @@ from app.schemas.inventory.warehouse import (
 )
 from app.services.inventory.warehouse_service import WarehouseService
 
-router = APIRouter(prefix="/warehouses", tags=["Warehouses"])
+router = APIRouter(tags=["Warehouses"])
 
 
 # ===========================================================================

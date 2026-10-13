@@ -24,7 +24,7 @@ from app.schemas.inventory.transfer import (
 )
 from app.services.inventory.transfer_service import TransferService
 
-router = APIRouter(prefix="/stock-transfers", tags=["Stock Transfers"])
+router = APIRouter(tags=["Stock Transfers"])
 
 
 # ===========================================================================
